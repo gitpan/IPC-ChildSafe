@@ -213,13 +213,12 @@ _cp_start_child(CHILD *handle)
        ** keep signals sent to the parent from going to the child.
        ** For instance, if the user wants to quit a program which
        ** is running a coprocess by sending it a SIGINT, the parent
-       ** may need to (a) handle SIGINT and trap to a cleanup routine,
+       ** may choose to handle SIGINT and trap to a cleanup routine,
        ** which may need the child process to help with the cleanup.
-       ** We can't let the child die before the parent.  This is
+       ** Thus we can't let the child die before the parent. This is
        ** no big deal, because if the parent catches a signal and
        ** just dies (e.g. the SIG_DFL case), the child will exit
        ** as soon as it reads EOF from stdin anyway.
-       ** Note that both parent and child sides of the fork
        **/
       (void) setpgid(pid, pid);
 

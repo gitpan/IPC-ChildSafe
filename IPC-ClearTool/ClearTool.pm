@@ -9,7 +9,7 @@ BEGIN {
     }
 }
 
-use IPC::ChildSafe 3.08;
+use IPC::ChildSafe 3.11;
 @EXPORT_OK = @IPC::ChildSafe::EXPORT_OK;
 %EXPORT_TAGS = ( BehaviorMod => \@EXPORT_OK );
 @ISA = q(IPC::ChildSafe);

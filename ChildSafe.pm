@@ -1,9 +1,16 @@
 package IPC::ChildSafe;
 
+$VERSION = '3.11';
+
 require 5.004;
 
+# This is retained mostly for backward compatibility. Modern uses should
+# (generally) employ the methods of the same name, e.g. $obj->store(1);
+@EXPORT_OK = qw(NOTIFY STORE PRINT IGNORE);
+
+@ISA = qw(Exporter DynaLoader);
+
 use strict;
-use vars qw($VERSION @ISA @EXPORT_OK);
 use Carp;
 
 use constant	NOTIFY => 0;	# default - print stderr msgs as they arrive
@@ -11,31 +18,23 @@ use constant	STORE  => 1;	# store stderr msgs for later retrieval
 use constant	PRINT  => 2;	# send all output to screen immediately
 use constant	IGNORE => 3;	# throw away all output, ignore retcode
 
-# This is retained mostly for backward compatibility. Modern uses should
-# (generally) employ the methods of the same name, e.g. $obj->store(1);
-@EXPORT_OK = qw(NOTIFY STORE PRINT IGNORE);
-
 require Exporter;
 require DynaLoader;
-@ISA = qw(Exporter DynaLoader);
 
 # An unusual situation - we allow the pure-Perl module to be installed
 # successfully on Windows platforms without the related XS code. Not
-# having the XS code means that IPC::ChildSafe cannot work, but
+# having the XS code means that IPC::ChildSafe cannot work - but
 # its subclass IPC::ClearTool can since it replaces the methods
 # which rely on the XS code anyway.
-if ($^O !~ /win32/i) {
+if ($^O !~ /win32|Windows_NT/i) {
     # SWIG-generated XS code.
     bootstrap IPC::ChildSafe;
     var_ChildSafe_init();
 }
 
-# The current version and a way to access it.
-$VERSION = "3.10"; sub version {$VERSION}
-
 # This is an undocumented service method, used only by the
-# constructor. It's broken out to make it easier for the
-# IPC::ClearTool module to override a minimal amount of code.
+# constructor. It's broken so that the IPC::ClearTool
+# subclass can override a minimal amount of code.
 sub _open {
    my $self = shift;
    local $^W = 0;
@@ -324,7 +323,7 @@ sub noexec {
 #   The hack doesn't belong here - this module doesn't even KNOW about
 # Win32::OLE or COM. However, at least two subclasses are known to need
 # it so it's kept here to avoid having multiple copies.
-if ($^O =~ /win32/i) {
+if ($^O =~ /win32|Windows_NT/i) {
     sub _fixup_COM_scalars {
 	my($self, $line) = @_;
 	return () if !defined $line;

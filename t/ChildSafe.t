@@ -32,7 +32,7 @@ if ($^O =~ /win32/i) {
    printok($SH->cmd('id') == 0 && $SH->finish == 0);
 }
 
-# If no ksh exists, assume it's a linux or similar system whose 'sh'
+# If no ksh exists, assume it's a Linux or similar system whose 'sh'
 # is a POSIX-like shell (e.g. bash for linux).
 my $shell = -x q(/bin/ksh) ? q(/bin/ksh) : q(sh);
 
@@ -43,7 +43,7 @@ $KSH = IPC::ChildSafe->new($shell, 'echo ++EOT++', '++EOT++');
 {
    $KSH->dbglevel(2);
    my(%results) = $KSH->cmd('tail -4 /etc/passwd');
-   printok(defined(%results) && $results{status} == 0 &&
+   printok($results{status} == 0 &&
 	   @{$results{stdout}} == 4 && @{$results{stderr}} == 0);
 }
 
@@ -52,14 +52,14 @@ $KSH->dbglevel(1);
 # Test #4
 {
    my(%results) = $KSH->cmd('ls /bin/cat /+/- /+/+');
-   printok(defined(%results) && $results{status} == 2 &&
+   printok($results{status} == 2 &&
 	   @{$results{stdout}} == 1 && @{$results{stderr}} == 2);
 }
 
 # Test #5
 {
    my(%results) = $KSH->cmd('ls /bin/cat /bin/mv /a/b/c/d');
-   printok(defined(%results) && $results{status} == 1 &&
+   printok($results{status} == 1 &&
 	   @{$results{stdout}} == 2 && @{$results{stderr}} == 1);
 }
 

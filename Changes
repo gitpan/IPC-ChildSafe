@@ -110,15 +110,15 @@ Revision history for Perl extension IPC::ChildSafe.
 	  particular it will not stall if the stderr pipe fills up as
 	  the old one did.
 	- Semi-ported to Win32. "Semi" in this case means that the
-	  IPC::ChildSafe module is modified to install without the XSUB
-	  code (the part that's hard to port to Windows). Of
-	  course ChildSafe by itself is useless without the XSUB code
-	  so why do this? Because IPC::ClearTool can (and now does)
-	  subclass ChildSafe and override the methods that use
-	  the compiled code, using instead the ClearCase Automation
-	  Library (CAL), a COM interface new in CC 3.2.1.  Thus, although
-	  IPC::ChildSafe still doesn't work in Windows its subclass
-	  IPC::ClearTool does (as of CC 3.2.1).
+	  IPC::ChildSafe module is modified to install on
+	  Windows without the XSUB code (the part that's hard to port).
+	  Of course ChildSafe by itself is useless without
+	  the XSUB code so why do this? Because IPC::ClearTool can (and
+	  now does) subclass ChildSafe and override the methods that
+	  use the compiled code, using instead the ClearCase Automation
+	  Library (CAL), a COM interface new in CC 3.2.1.  Thus,
+	  although IPC::ChildSafe still doesn't work in Windows its
+	  subclass IPC::ClearTool does (as of CC 3.2.1).
 	- NOTE: THIS RELEASE BREAKS SOME BACKWARD COMPATIBILITY!!
 	  It just seemed that this was a major enough rewrite,
 	  and the benefits of it important enough, that it was
@@ -169,3 +169,8 @@ Revision history for Perl extension IPC::ChildSafe.
 	- The mode methods (->store et al) now return $self
 	  to allow for "drive-by" attribute setting, e.g.
 		$obj->store->cmd('pwv');
+
+3.11 Thu Apr  6 09:00:22 EDT 2000
+	- backported to perl 5.004/Windows (e.g. MKS).
+	  Required a few less assumptions about Getopt::Long
+	  capabilities and $^O.
