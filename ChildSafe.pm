@@ -21,7 +21,7 @@ bootstrap IPC::ChildSafe;
 var_ChildSafe_init();
 
 # The current version and a way to access it.
-$VERSION = "2.26"; sub version {$VERSION}
+$VERSION = "2.27"; sub version {$VERSION}
 
 ########################################################################
 # Just a thin layer over child_open (see child.c). Optional last
@@ -161,8 +161,7 @@ sub status
 #     returns them in a list.
 #   Scalar context: returns the number of lines currently stored in
 #     the stdout stack.
-#   Void context: shifts the first (oldest) stdout line off the
-#     stdout stack and prints it to parent's stdout.
+#   Void context: prints the current stdout stack to actual stdout.
 ########################################################################
 sub stdout
 {
@@ -264,7 +263,7 @@ IPC::ChildSafe, ChildSafe - control a child process without blocking
       # Another ls cmd - results added to the object's internal stack
       $SH->cmd('ls /tmp');
 
-      # Since we're stuck in this example, let's get the date too.
+      # Since we're stuck in this dumb example, let's get the date too.
       $SH->cmd('date');
 
       # Now dump results to stdout - show how to get 1 line at a time
