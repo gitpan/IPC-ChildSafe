@@ -21,7 +21,7 @@ bootstrap IPC::ChildSafe;
 var_ChildSafe_init();
 
 # The current version and a way to access it.
-$VERSION = "2.25"; sub version {$VERSION}
+$VERSION = "2.26"; sub version {$VERSION}
 
 ########################################################################
 # Just a thin layer over child_open (see child.c). Optional last
@@ -215,74 +215,12 @@ sub errchk
 }
 
 ########################################################################
-# Print stored stderr and exit if any errors show up in the
-# current stored data.
-########################################################################
-sub assert
-{
-   my($self, $r_results) = @_;
-   if (defined($r_results)) {
-      if ($$r_results{'status'}) {
-	 print STDERR @{$$r_results{'stderr'}};
-	 exit $$r_results{'status'};
-      }
-   } else {
-      my $err_match = int &{$self->{_ERRCHK}}(\@{$self->{_STDERR}},
-					   \@{$self->{_STDOUT}});
-      if ($err_match) {
-	 $self->stderr;
-	 exit $err_match;
-      }
-   }
-}
-
-########################################################################
-# Sorts the stdout data in place. Takes an optional sort-sub just like
-# the builtin sort.
-########################################################################
-sub sort
-{
-   my($self, $r_subr) = @_;
-   if (defined $r_subr) {
-      @{$self->{_STDOUT}} = sort $r_subr @{$self->{_STDOUT}};
-   } else {
-      @{$self->{_STDOUT}} = sort @{$self->{_STDOUT}};
-   }
-}
-
-########################################################################
 # Ends the child process and returns its exit status.
 ########################################################################
 sub finish
 {
    my($self) = shift;
    child_close(${$self->{_CHILD}});
-}
-
-########################################################################
-# Emulates the perl system() builtin.
-########################################################################
-sub system
-{
-   my($self) = shift;
-   $? = ($self->cmd(@_ => PRINT) & 0xff) << 8;
-   return $?;
-}
-
-########################################################################
-# Emulates the perl `` (aka qx) builtin.
-########################################################################
-sub backtick
-{
-   my($self) = shift;
-   $? = ($self->cmd(@_) & 0xff) << 8;
-   my @output = $self->stdout;
-   if (wantarray) {
-      return @output;
-   } elsif (defined(wantarray)) {
-      local $" = '';
-      return "@output";
-   }
 }
 
 ########################################################################

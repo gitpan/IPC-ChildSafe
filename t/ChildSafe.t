@@ -6,7 +6,7 @@
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
-BEGIN { $| = 1; print "1..8\n"; }
+BEGIN { $| = 1; print "1..6\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use IPC::ChildSafe;
 $loaded = 1;
@@ -63,21 +63,6 @@ $KSH = IPC::ChildSafe->new('ksh', 'echo ++EOT++', '++EOT++');
    die "not ok 6" unless $KSH->stdout == 1;
    die "not ok 6" unless $KSH->stderr == 0;
    print "ok 6\n";
-}
-
-# Test #7
-{
-   $KSH->system('echo test output >&2');
-   die "not ok 7" unless $? == (1 << 8);
-   print "ok 7\n";
-}
-
-# Test #8
-{
-   my $line = $KSH->backtick('echo hi there');
-   die "not ok 8" unless $line =~ /hi there/;
-   die "not ok 8" unless $? == 0;
-   print "ok 8\n";
 }
 
 die "not ok last" if $KSH->finish;			# Kornshell exit status

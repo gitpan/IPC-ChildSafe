@@ -57,11 +57,11 @@ static CHILD *mru_handle;	/* most-recently-used handle */
  ** on error is taken as a parameter ('r') because different functions
  ** return different types.
  **/
-#define UPDATE_HANDLE(h,m,r)		\
+#define UPDATE_HANDLE(p,m,r)		\
    {					\
-      if (h == NULL) h = m;		\
-      if ((m = h) == NULL) return r;	\
-      if (h->cph_pid == 0) return r;	\
+      if (p == NULL) p = m;		\
+      if ((m = p) == NULL) return r;	\
+      if (p->cph_pid == 0) return r;	\
    }
 
 /**
@@ -420,7 +420,7 @@ child_open(char *cmd, char *tag, char *eot)
       exit(1);
    }
    (void) memset(handle, 0, sizeof(CHILD));
-   handle->cph_cmd = cmd;
+   handle->cph_cmd = _cp_newstr(cmd);
    handle->cph_tag = _cp_newstr("%s\n", tag);
    handle->cph_eot = _cp_newstr("%s\n", eot);
 

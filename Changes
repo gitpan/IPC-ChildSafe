@@ -55,3 +55,6 @@ Revision history for Perl extension IPC::ChildSafe.
 2.25  Sun May 17 12:34:46 1998
 	- Renamed $obj->command() to $obj->cmd() for brevity.
 	Left old method in place but de-documented.
+
+2.26  Mon Sep 28 09:44:12 EDT 1998
+	- Fixed a bug causing multiple instances to overwrite each other.
