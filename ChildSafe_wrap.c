@@ -14,7 +14,6 @@
  *
  */
 
-
 #define SWIGCODE
 /* Implementation : PERL 5 */
 
@@ -34,8 +33,23 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-/* Definitions for compiling Perl extensions on a variety of machines */
 
+/*
+ * HAND EDIT!
+ * This version has been ported to perl5.006 by removing old (-DPERL_POLLUTE)
+ * symbols. The code below is a hack for backwards compatibility with
+ * 5.005 and below.
+ */
+#ifdef sv_undef
+#undef PL_sv_undef
+#define PL_sv_undef sv_undef
+#undef PL_sv_yes
+#define PL_sv_yes sv_yes
+#undef PL_na
+#define PL_na na
+#endif
+
+/* Definitions for compiling Perl extensions on a variety of machines */
 #if defined(WIN32) || defined(__WIN32__)
 #   if defined(_MSC_VER)
 #	define SWIGEXPORT(a,b) __declspec(dllexport) a b
@@ -289,7 +303,7 @@ char *_SWIG_GetPtr(CPerl *pPerl, SV *sv, void **ptr, char *_t)
       *(ptr) = (void *) tmp;
       return (char *) 0;
     }
-  } else if (sv == &sv_undef) {            /* Check for undef */
+  } else if (sv == &PL_sv_undef) {            /* Check for undef */
     *(ptr) = (void *) 0;
     return (char *) 0;
   } else if (SvTYPE(sv) == SVt_RV) {       /* Check for NULL pointer */
@@ -496,9 +510,9 @@ XS(_wrap_child_open) {
     cv = cv;
     if ((items < 3) || (items > 3)) 
         croak("Usage: child_open(char *,char *,char *);");
-    _arg0 = (char *) SvPV(ST(0),na);
-    _arg1 = (char *) SvPV(ST(1),na);
-    _arg2 = (char *) SvPV(ST(2),na);
+    _arg0 = (char *) SvPV(ST(0),PL_na);
+    _arg1 = (char *) SvPV(ST(1),PL_na);
+    _arg2 = (char *) SvPV(ST(2),PL_na);
     _result = (CHILD *)child_open(_arg0,_arg1,_arg2);
     ST(argvi) = sv_newmortal();
     sv_setref_pv(ST(argvi++),"CHILDPtr", (void *) _result);
@@ -516,7 +530,7 @@ XS(_wrap_child_puts) {
     cv = cv;
     if ((items < 2) || (items > 2)) 
         croak("Usage: child_puts(char *,CHILD *);");
-    _arg0 = (char *) SvPV(ST(0),na);
+    _arg0 = (char *) SvPV(ST(0),PL_na);
     if (SWIG_GetPtr(ST(1),(void **) &_arg1,"CHILDPtr")) {
         croak("Type error in argument 2 of child_puts. Expected CHILDPtr.");
         XSRETURN(1);
@@ -655,6 +669,6 @@ XS(boot_IPC__ChildSafe) {
 	 SWIG_RegisterMapping("int","signed int",0);
 	 SWIG_RegisterMapping("unsigned int","int",0);
 	 SWIG_RegisterMapping("signed long","long",0);
-	 ST(0) = &sv_yes;
+	 ST(0) = &PL_sv_yes;
 	 XSRETURN(1);
 }

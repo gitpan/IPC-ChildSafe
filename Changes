@@ -59,5 +59,12 @@ Revision history for Perl extension IPC::ChildSafe.
 2.26  Mon Sep 28 09:44:12 EDT 1998
 	- Fixed a bug causing multiple instances to overwrite each other.
 
-2.26  Mon Oct 19 16:25:14 EDT 1998
+2.27  Mon Oct 19 16:25:14 EDT 1998
 	- Fixed a couple of doc bugs
+
+2.28  Sat Jan  9 19:52:07 EST 1999
+	- Updated XS code to compile under perl5.006 and above
+	  (cleaned up -DPERL_POLLUTE macros).
+
+2.29  Mon Jan 11 10:12:25 EST 1999
+	- Previous fix (2.28) turned out to break with perl <5.006.

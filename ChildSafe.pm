@@ -21,7 +21,7 @@ bootstrap IPC::ChildSafe;
 var_ChildSafe_init();
 
 # The current version and a way to access it.
-$VERSION = "2.27"; sub version {$VERSION}
+$VERSION = "2.29"; sub version {$VERSION}
 
 ########################################################################
 # Just a thin layer over child_open (see child.c). Optional last
