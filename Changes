@@ -159,3 +159,13 @@ Revision history for Perl extension IPC::ChildSafe.
 
 3.08 Sat Jan 15 20:22:30 EST 2000
 	- Fixed a couple of warnings.
+
+3.09 Tue Feb  1 17:36:44 EST 2000
+	- Found and fixed a couple of bugs in the un(der)documented
+	  'stdin' method. Now does the right thing whether the
+	  input is chomped or not.
+
+3.10 Tue Feb  8 09:57:44 EST 2000
+	- The mode methods (->store et al) now return $self
+	  to allow for "drive-by" attribute setting, e.g.
+		$obj->store->cmd('pwv');

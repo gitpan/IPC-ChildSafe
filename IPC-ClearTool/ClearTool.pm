@@ -9,7 +9,7 @@ BEGIN {
     }
 }
 
-use IPC::ChildSafe 2.34;
+use IPC::ChildSafe 3.08;
 @EXPORT_OK = @IPC::ChildSafe::EXPORT_OK;
 %EXPORT_TAGS = ( BehaviorMod => \@EXPORT_OK );
 @ISA = q(IPC::ChildSafe);
@@ -77,18 +77,25 @@ sub _puts {
 	my $dbg = $self->{DBGLEVEL} || 0;
 	warn "+ -->> $cmd\n" if $dbg;
 	my $out = $self->{IPC_CHILD}->CmdExec($cmd);
-	my $error = int Win32::OLE->LastError;
-	$self->{IPC_STATUS} = $error;
 	# CmdExec always returns a scalar through Win32::OLE so
 	# we have to split it in case it's really a list.
-	my @stdout = $self->_fixup_COM_scalars($out) if $out;
-	print map {"+ <<-- $_"} @stdout if @stdout && $dbg > 1;
-	push(@{$self->{IPC_STDOUT}}, @stdout);
-	push(@{$self->{IPC_STDERR}},
-		$self->_fixup_COM_scalars(Win32::OLE->LastError)) if $error;
+	if ($out) {
+	    my @stdout = $self->_fixup_COM_scalars($out);
+	    push(@{$self->{IPC_STDOUT}}, @stdout);
+	    print STDERR map {"+ <<-- $_"} @stdout if $dbg > 1;
+	}
+	if (my $err = Win32::OLE->LastError) {
+	    $err =~ s/OLE exception from.*?:\s*//;
+	    my @stderr = $self->_fixup_COM_scalars($err);
+	    @stderr = grep !/Unspecified error/is, @stderr;
+	    print STDERR map {"+ <<== $_"} @stderr if $dbg > 1;
+	    push(@{$self->{IPC_STDERR}},
+			    map {"cleartool: Error: $_"} @stderr);
+	}
 	return $self;
+    } else {
+	return $self->SUPER::_puts(@_);
     }
-    return $self->SUPER::_puts(@_);
 }
 
 sub finish {
@@ -99,6 +106,12 @@ sub finish {
     }
     return $self->SUPER::finish(@_);
 }
+
+# Hack to propagate these old, deprecated names for back-compat.
+*NOTIFY = *IPC::ChildSafe::NOTIFY;
+*STORE  = *IPC::ChildSafe::STORE;
+*PRINT  = *IPC::ChildSafe::PRINT;
+*IGNORE = *IPC::ChildSafe::IGNORE;
 
 1;
 

@@ -8,3 +8,7 @@ Revision history for Perl extension IPC::ClearTool.
 	- Ported to Windows NT/ClearCase 4.0. This is done by using
 	  the ClearCase Automation Library (aka CAL) COM interface
 	  instead of the XS layer used on UNIX.
+
+3.10 Wed Feb  2 14:35:14 EST 2000
+	- Fixed bugs in error handling on Windows/COM. Remove
+	  Win32::OLE-added verbiage from error msg.

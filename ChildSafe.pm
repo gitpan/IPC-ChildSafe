@@ -31,7 +31,7 @@ if ($^O !~ /win32/i) {
 }
 
 # The current version and a way to access it.
-$VERSION = "3.09"; sub version {$VERSION}
+$VERSION = "3.10"; sub version {$VERSION}
 
 # This is an undocumented service method, used only by the
 # constructor. It's broken out to make it easier for the
@@ -198,7 +198,11 @@ sub stdin {
 for my $mode (qw(NOTIFY STORE PRINT IGNORE)) {
    my $meth = lc $mode;
    no strict 'refs';
-   *$meth = sub { $_[0]->{IPC_MODE} = (defined($_[1]) && !$_[1]) ? 0 : &$mode };
+   *$meth = sub {
+       my $self = shift;
+       $self->{IPC_MODE} = (defined($_[0]) && !$_[0]) ? 0 : &$mode;
+       $self;
+   };
 }
 
 ########################################################################
@@ -339,6 +343,7 @@ if ($^O =~ /win32/i) {
     # calls it, it will determine whether we need to reverse output.
     sub cc_321_hack {
 	my $self = shift;
+	my $nowarn = shift;
 	eval { require Win32::Registry };
 	if ($@) {
 	    print $@;
@@ -354,7 +359,7 @@ if ($^O =~ /win32/i) {
 	$major = (split(/\./, $data{ClearCaseMajorVersion}->[2]))[0];
 	$self->{IPC_CHILD_REV} = $major;
 	warn "Note: the 'cc_321_hack' is unnecessary in CC 4.0!\n"
-						if !$self->{IPC_CHILD_REV};
+				if !$nowarn && $self->{IPC_CHILD_REV} >= 4;
 	return $self->{IPC_CHILD_REV};
     };
 }
