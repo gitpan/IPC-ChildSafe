@@ -21,7 +21,7 @@ use Cwd 'getcwd';
 use IPC::ClearTool;
 $final += printok(1);
 
-if ($^O !~ /win32/i && ! -x '/usr/atria/bin/cleartool') {
+if ($^O !~ /win32|Windows_NT|cygwin/i && ! -x '/usr/atria/bin/cleartool') {
    warn "\nNo ClearCase found on this system, IPC::ClearTool not tested\n";
    exit 0;
 }

@@ -5,7 +5,7 @@ use ExtUtils::MakeMaker;
 # on Windows anyway; this is done because it's possible to subclass it
 # such that it DOES work (see ClearTool.pm).
 
-if ($^O !~ /win32/i) {
+if ($^O !~ /win32|Windows_NT|cygwin/i) {
     WriteMakefile(
 	NAME		=> 'IPC::ChildSafe',
 	OBJECT  	=> 'childsafe.o ChildSafe_wrap.o npoll.o',

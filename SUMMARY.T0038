@@ -1,0 +1,9 @@
+<HTML><BODY>
+This is a Perl module for running multiple cleartool commands in a
+single process space for speed. The speedup depends on the types of
+cleartool operations you're doing but typically seems to be a factor
+between 2 and 10. It works on UNIX and NT (on the latter functioning
+just as an interface to CAL). Note: newer versions may be present at
+<A HREF="http://www.perl.com/CPAN-local/modules/by-module/IPC/DSB/">
+http://www.perl.com/CPAN-local/modules/by-module/IPC/DSB/</A>.
+</BODY></HTML>

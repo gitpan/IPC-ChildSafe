@@ -171,6 +171,22 @@ Revision history for Perl extension IPC::ChildSafe.
 		$obj->store->cmd('pwv');
 
 3.11 Thu Apr  6 09:00:22 EDT 2000
-	- backported to perl 5.004/Windows (e.g. MKS).
+	- Backported to perl 5.004/Windows (e.g. MKS).
 	  Required a few less assumptions about Getopt::Long
 	  capabilities and $^O.
+
+3.12 Tue Nov 13 18:57:04 EST 2001
+	- Made static-size buffers dramatically larger (2k -> 128k)
+	  which may cure some core dumps (but of course not all).
+	- Applied patch from Daphne Pfister @nortelnetworks.com
+	  to build with a -DMULTIPLICITY perl.
+	- Removed support for CC 3.2.1 CAL on Windows because it
+	  required some truly awful code, and 3.2.1 is obsolete.
+	- Various other minor cleanups.
+	- NOTE: I cannot verify the versions of Perl on which
+	  this currently works. There are potential issues with 
+	  -DMULTIPLICITY perls as above, there are questions about
+	  the -DPOLLUTE code changes in 5.005 and 5.6. I've tried to
+	  code conservatively and don't KNOW of anything that would
+	  keep it from compiling/working with any version >=5.004,
+	  but have no way to test all the permutations.

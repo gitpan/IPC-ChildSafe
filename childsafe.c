@@ -11,7 +11,7 @@
 
 /**
  ****************************************************************************
- ** Copyright (c) 1997,1999,2000 David Boyce (dsb@world.std.com).
+ ** Copyright (c) 1997-2001 David Boyce (dsb@boyski.com).
  ** All rights reserved.
  ** This program is free software; you can redistribute it and/or
  ** modify it under the same terms as Perl.
@@ -27,7 +27,6 @@
  ** examples given by Stevens (ISBN 0-201-56317-7).
  **/
 
-
 static char *xs_ver = "@(#) IPC::ChildSafe " XS_VERSION;
 
 /** Used for debugging output **/
@@ -40,9 +39,8 @@ static char *xs_ver = "@(#) IPC::ChildSafe " XS_VERSION;
 #endif
 
 /** Ok, these should be dynamic allocations ... maybe someday **/
-#define STDLINE 2048
+#define STDLINE 131072
 #define BIGLINE	(STDLINE<<3)
-
 
 /** Print debugging messages that assert this level (0=off, 1=low, ...) **/
 int Debug_Level = 0;
@@ -301,11 +299,11 @@ int bck_read( void* handle, char* buf, int len ){
       _dbg(F,L,3, 
 	    "unterminated end of stdin from %s", ((CHILD*)handle)->cph_cmd );
       _dbg(F,L,2, "<<-- %.*s", len, buf);
-      Perl_av_push( ((CHILD*)handle)->cph_out_array , Perl_newSVpv( buf, len ) );
+      Perl_av_push( aTHX_ ((CHILD*)handle)->cph_out_array , Perl_newSVpv( aTHX_ buf, len ) );
       return NPOLL_RET_IDLE;
     } else {
       _dbg(F,L,2, "<<-- %.*s", len, buf);
-      Perl_av_push( ((CHILD*)handle)->cph_out_array , Perl_newSVpv( buf, len ) );
+      Perl_av_push( aTHX_ ((CHILD*)handle)->cph_out_array , Perl_newSVpv( aTHX_ buf, len ) );
       return NPOLL_CONTINUE;
     }
   } else {
@@ -317,7 +315,7 @@ int bck_read( void* handle, char* buf, int len ){
 int err_read( void* handle, char* buf, int len ){
   _dbg(F,L,2, "<<== %.*s", len, buf);
   if( len ){
-    Perl_av_push( ((CHILD*)handle)->cph_err_array , Perl_newSVpv( buf, len ) );
+    Perl_av_push( aTHX_ ((CHILD*)handle)->cph_err_array , Perl_newSVpv( aTHX_ buf, len ) );
     return NPOLL_CONTINUE;
   } else {
     return NPOLL_RET_IDLE;

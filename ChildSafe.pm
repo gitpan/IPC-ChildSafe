@@ -1,40 +1,44 @@
 package IPC::ChildSafe;
 
-$VERSION = '3.11';
-
 require 5.004;
+use Carp;
 
-# This is retained mostly for backward compatibility. Modern uses should
+require Exporter;
+require DynaLoader;
+
+$VERSION = '3.12';
+# Exports are retained mostly for backward compatibility. Modern uses should
 # (generally) employ the methods of the same name, e.g. $obj->store(1);
 @EXPORT_OK = qw(NOTIFY STORE PRINT IGNORE);
-
+@EXPORT = qw(CP_NO_SHOW_ERR CP_SHOW_ERR);
 @ISA = qw(Exporter DynaLoader);
 
 use strict;
-use Carp;
 
 use constant	NOTIFY => 0;	# default - print stderr msgs as they arrive
 use constant	STORE  => 1;	# store stderr msgs for later retrieval
 use constant	PRINT  => 2;	# send all output to screen immediately
 use constant	IGNORE => 3;	# throw away all output, ignore retcode
 
-require Exporter;
-require DynaLoader;
+use vars qw($VERSION $Debug_Level $No_Exec);
 
 # An unusual situation - we allow the pure-Perl module to be installed
 # successfully on Windows platforms without the related XS code. Not
 # having the XS code means that IPC::ChildSafe cannot work - but
 # its subclass IPC::ClearTool can since it replaces the methods
 # which rely on the XS code anyway.
-if ($^O !~ /win32|Windows_NT/i) {
+if ($^O !~ /win32|Windows_NT|cygwin/i) {
     # SWIG-generated XS code.
-    bootstrap IPC::ChildSafe;
+    bootstrap IPC::ChildSafe $VERSION;
     var_ChildSafe_init();
 }
 
+# The current version and a way to access it.
+sub version {$VERSION}
+
 # This is an undocumented service method, used only by the
-# constructor. It's broken so that the IPC::ClearTool
-# subclass can override a minimal amount of code.
+# constructor. It's broken out to make it easier for the
+# IPC::ClearTool module to override a minimal amount of code.
 sub _open {
    my $self = shift;
    local $^W = 0;
@@ -80,8 +84,8 @@ sub new {
       IPC_CHILD		=> undef,
       IPC_ERRCHK	=> undef,
       IPC_MODE		=> $mode || NOTIFY,
-      IPC_STDOUT	=> undef,
-      IPC_STDERR	=> undef,
+      IPC_STDOUT	=> [],
+      IPC_STDERR	=> [],
    };
    bless ($self, $class);
 
@@ -323,44 +327,14 @@ sub noexec {
 #   The hack doesn't belong here - this module doesn't even KNOW about
 # Win32::OLE or COM. However, at least two subclasses are known to need
 # it so it's kept here to avoid having multiple copies.
-if ($^O =~ /win32|Windows_NT/i) {
+if ($^O =~ /win32|Windows_NT|cygwin/i) {
     sub _fixup_COM_scalars {
 	my($self, $line) = @_;
 	return () if !defined $line;
 	$line =~ s%\cM\cJ$%%s;
 	my @lines = map {"$_\n"} split(m%\cM\cJ%, $line, -1);
-	if (defined($self->{IPC_CHILD_REV}) && $self->{IPC_CHILD_REV} < 4) {
-	    return reverse @lines;	# hack for bug in 3.2.1 CmdExec
-	} else {
-	    return @lines;
-	}
+	return @lines;
     }
-
-    # Another awful hack. In CC 3.2.1, the CAL CmdExec method was present
-    # but had a bug: the output came out in backwards order. In order
-    # to support 3.2.1, we provide this class method. If the user
-    # calls it, it will determine whether we need to reverse output.
-    sub cc_321_hack {
-	my $self = shift;
-	my $nowarn = shift;
-	eval { require Win32::Registry };
-	if ($@) {
-	    print $@;
-	    return undef;
-	}
-	Win32::Registry->import;
-	my($tree, %data, $major);
-	my $atria = 'SOFTWARE\Atria\ClearCase\CurrentVersion';
-	return undef if !defined($::HKEY_LOCAL_MACHINE) ||
-	    !$::HKEY_LOCAL_MACHINE->Open($atria, $tree);
-	$tree->GetValues(\%data);
-	$tree->Close;
-	$major = (split(/\./, $data{ClearCaseMajorVersion}->[2]))[0];
-	$self->{IPC_CHILD_REV} = $major;
-	warn "Note: the 'cc_321_hack' is unnecessary in CC 4.0!\n"
-				if !$nowarn && $self->{IPC_CHILD_REV} >= 4;
-	return $self->{IPC_CHILD_REV};
-    };
 }
 
 1;
@@ -475,8 +449,6 @@ condition. E.g. the version provided internally is:
 	grep(!/^\+\s|warning:/i, @$r_stderr);
     }
 
-    my $sh = IPC::ChildSafe->new('sh', 'echo ++EOT++', '++EOT++', \&errors);
-
 which treats ANY output to stderr as indicative of an error, with the
 exception of lines beginning with "+ " (shell verbosity) or containing
 the string "warning:".
@@ -574,9 +546,9 @@ be printed with a leading '-'.
 
 =head1 AUTHOR
 
-David Boyce dsb@world.std.com
+David Boyce dsb@boyski.com
 
-Copyright (c) 1997-1999 David Boyce. All rights reserved. This perl
+Copyright (c) 1997-2001 David Boyce. All rights reserved. This perl
 program is free software; you may redistribute it and/or modify it
 under the same terms as Perl itself.
 
@@ -586,3 +558,4 @@ perl(1), "perldoc IPC::Open3", _Advanced Programming in the Unix Environment_
 by W. R. Stevens
 
 =cut
+

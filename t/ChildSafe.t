@@ -21,7 +21,7 @@ BEGIN {
 use IPC::ChildSafe;
 $final += printok(1);
 
-if ($^O =~ /win32/i) {
+if ($^O =~ /win32|Windows_NT|cygwin/i) {
     print "No further testing on $^O - module exists here only to subclass\n";
     exit 0;
 }

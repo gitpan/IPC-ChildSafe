@@ -413,7 +413,7 @@ char *_SWIG_GetPtr(CPerl *pPerl, SV *sv, void **ptr, char *_t)
 /* Magic variable code */
 #ifndef PERL_OBJECT
 #define swig_create_magic(s,a,b,c) _swig_create_magic(s,a,b,c)
-static void _swig_create_magic(SV *sv, char *name, int (*set)(SV *, MAGIC *), int (*get)(SV *,MAGIC *)) {
+static void _swig_create_magic(SV *sv, char *name, int (*set)(pTHX_ SV *, MAGIC *), int (*get)(pTHX_ SV *,MAGIC *)) {
 #else
 #define swig_create_magic(s,a,b,c) _swig_create_magic(pPerl,s,a,b,c)
 static void _swig_create_magic(CPerl *pPerl, SV *sv, char *name, int (CPerl::*set)(SV *, MAGIC *), int (CPerl::*get)(SV *, MAGIC *)) {
@@ -437,7 +437,7 @@ static void _swig_create_magic(CPerl *pPerl, SV *sv, char *name, int (CPerl::*se
 extern "C"
 #endif
 #ifndef PERL_OBJECT
-SWIGEXPORT(void,boot_IPC__ChildSafe)(CV* cv);
+SWIGEXPORT(void,boot_IPC__ChildSafe)(pTHX_ CV* cv);
 #else
 SWIGEXPORT(void,boot_IPC__ChildSafe)(CPerl *, CV *cv);
 #endif
@@ -456,7 +456,7 @@ SWIGCLASS_STATIC int swig_magic_readonly(SV *sv, MAGIC *mg) {
     croak("Value is read-only.");
     return 0;
 }
-SWIGCLASS_STATIC int _wrap_set_Debug_Level(SV* sv, MAGIC *mg) {
+SWIGCLASS_STATIC int _wrap_set_Debug_Level(pTHX_ SV* sv, MAGIC *mg) {
 
 
     MAGIC_PPERL
@@ -465,7 +465,7 @@ SWIGCLASS_STATIC int _wrap_set_Debug_Level(SV* sv, MAGIC *mg) {
     return 1;
 }
 
-SWIGCLASS_STATIC int _wrap_val_Debug_Level(SV *sv, MAGIC *mg) {
+SWIGCLASS_STATIC int _wrap_val_Debug_Level(pTHX_ SV *sv, MAGIC *mg) {
 
 
     MAGIC_PPERL
@@ -474,7 +474,7 @@ SWIGCLASS_STATIC int _wrap_val_Debug_Level(SV *sv, MAGIC *mg) {
     return 1;
 }
 
-SWIGCLASS_STATIC int _wrap_set_No_Exec(SV* sv, MAGIC *mg) {
+SWIGCLASS_STATIC int _wrap_set_No_Exec(pTHX_ SV* sv, MAGIC *mg) {
 
 
     MAGIC_PPERL
@@ -483,7 +483,7 @@ SWIGCLASS_STATIC int _wrap_set_No_Exec(SV* sv, MAGIC *mg) {
     return 1;
 }
 
-SWIGCLASS_STATIC int _wrap_val_No_Exec(SV *sv, MAGIC *mg) {
+SWIGCLASS_STATIC int _wrap_val_No_Exec(pTHX_ SV *sv, MAGIC *mg) {
 
 
     MAGIC_PPERL

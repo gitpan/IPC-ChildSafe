@@ -4,7 +4,7 @@ use strict;
 use vars qw($VERSION @ISA @EXPORT_OK %EXPORT_TAGS);
 
 BEGIN {
-    if ($^O =~ /win32/i) {
+    if ($^O =~ /win32|Windows_NT|cygwin/i) {
 	require Win32::OLE;
     }
 }
@@ -21,7 +21,7 @@ sub new {
     my $proto = shift;
     my $class = ref($proto) || $proto;
 
-    if ($^O =~ /win32/i) {
+    if ($^O =~ /win32|Windows_NT|cygwin/i) {
 	return $class->SUPER::new(@_);
     }
 
@@ -47,7 +47,7 @@ sub comment {
 sub chdir {
     my $self = shift;
     my $nwd = shift;
-    if ($^O =~ /win32/i) {
+    if ($^O =~ /win32|Windows_NT|cygwin/i) {
 	return $self->cmd(qq(cd $nwd));
     } else {
 	if (!CORE::chdir($nwd)) {
@@ -61,7 +61,7 @@ sub chdir {
 
 sub _open {
     my $self = shift;
-    if ($^O =~ /win32/i) {
+    if ($^O =~ /win32|Windows_NT|cygwin/i) {
 	$self->{IPC_CHILD} = Win32::OLE->new('ClearCase.ClearTool')
 			|| die "Cannot create ClearCase.ClearTool object\n";
 	Win32::OLE->Option(Warn => 0);
@@ -72,7 +72,7 @@ sub _open {
 
 sub _puts {
     my $self = shift;
-    if ($^O =~ /win32/i) {
+    if ($^O =~ /win32|Windows_NT|cygwin/i) {
 	my $cmd = shift;
 	my $dbg = $self->{DBGLEVEL} || 0;
 	warn "+ -->> $cmd\n" if $dbg;
@@ -100,7 +100,7 @@ sub _puts {
 
 sub finish {
     my $self = shift;
-    if ($^O =~ /win32/i) {
+    if ($^O =~ /win32|Windows_NT|cygwin/i) {
 	undef $self->{IPC_CHILD};
 	return 0;
     }
@@ -167,27 +167,28 @@ IPC::ClearTool, ClearTool - run a bidirectional pipe to a cleartool process
 This module invokes the ClearCase 'cleartool' command as a child
 process and opens pipes to its standard input, output, and standard
 error. Cleartool commands may be sent "down the pipe" via the
-$CT->cmd() method.  All stdout resulting from commands is stored in the
-object and can be retrieved at any time via the $CT->stdout method. By
-default, stderr from commands is sent directly to the real (parent's)
-stderr but if the I<store> attribute is set as shown above, stderr will
-accumulate just like stdout and must be retrieved via $CT->stderr.
+$CT-E<gt>cmd() method.  All stdout resulting from commands is stored in
+the object and can be retrieved at any time via the $CT-E<gt>stdout
+method. By default, stderr from commands is sent directly to the real
+(parent's) stderr but if the I<store> attribute is set as shown above,
+stderr will accumulate just like stdout and must be retrieved via
+C<$CT-E<gt>stderr>.
 
-If $CT->cmd is called in a void context it will exit on error unless
-the I<ignore> attribute is set, in which case all output is thrown away
-and error messages suppressed.  If called in a scalar context it
-returns the exit status of the command.
+If $CT-E<gt>cmd is called in a void context it will exit on error
+unless the I<ignore> attribute is set, in which case all output is
+thrown away and error messages suppressed.  If called in a scalar
+context it returns the exit status of the command.
 
-When used with no arguments and in a void context, $CT->cmd simply
+When used with no arguments and in a void context, $CT-E<gt>cmd simply
 clears the stdout and stderr accumulators.
 
-The $CT->stdout and $CT-stderr methods behave just like arrays; when
-used in a scalar context they return the number of lines currently
-stored.  When used in an array context they return, well, an array
-containing all currently stored lines, and then clear the internal
-stack.
+The $CT-E<gt>stdout and $CT-E<gt>stderr methods behave just like
+arrays; when used in a scalar context they return the number of lines
+currently stored.  When used in an array context they return, well, an
+array containing all currently stored lines, and then clear the
+internal stack.
 
-The $CT->finish method ends the child process and returns its exit
+The $CT-E<gt>finish method ends the child process and returns its exit
 status.
 
 This is only a summary of the documentation. There are more advanced
@@ -211,8 +212,8 @@ Unfortunately, the quoting rules of cleartool are insufficient to allow
 passing comments with embedded newlines using C<-c>. The result being
 that there's no clean way to handle multi-line comments.
 
-To work around this, a method C<$CT->comment> is provided which
-registers a comment I<to be passed to the next C<$CT->cmd()> command>.
+To work around this, a method C<$CT-E<gt>comment> is provided which
+registers a comment I<to be passed to the next C<$CT-E<gt>cmd()> command>.
 It's inserted into the stdin stream with a "\n.\n" appended.
 The subsequent command must have a C<-cq> flag, e.g.:
 
@@ -254,28 +255,13 @@ stop you from doing that.
 Due to the way Win32::OLE works, on Windows the results of each
 command are passed back as a single string, possibly with embedded
 newlines. For consistency, in a list context we split this back into
-lines and return the list. However, it's possible for this to result in
-a different line count for the same command in UNIX and NT, if one of
-the lines would have had embedded newlines in it anyway.
-
-=item * Win32/CC 3.2.1 COM Bug
-
-The ClearCase/COM API wasn't documented until CC 4.0, but it's actually
-present (at least the IClearTool interface, which is what
-IPC::ClearTool uses) in 3.2.1 with one major bug - all output arrives
-backwards! So we provide a class method
-
-	IPC::ClearTool->cc_321_hack;
-
-which, if called, will determine whether it's running on CC 3.2.1 and
-if so reverse the order of output. This is called once at the start of the
-program to set the state; it's a no-op if CC 4.0 or above is in use.
+lines and return the list.
 
 =back
 
 =head1 AUTHOR
 
-David Boyce dsb@world.std.com
+David Boyce dsb@boyski.com
 
 =head1 SEE ALSO
 
