@@ -31,7 +31,7 @@ if ($^O !~ /win32/i) {
 }
 
 # The current version and a way to access it.
-$VERSION = "3.08"; sub version {$VERSION}
+$VERSION = "3.09"; sub version {$VERSION}
 
 # This is an undocumented service method, used only by the
 # constructor. It's broken out to make it easier for the
@@ -137,15 +137,13 @@ sub cmd {
    # If the command will need to read input from stdin, provide
    # it here as a trailer so it's seen before the tag cmd. Yes,
    # it's a grievous hack.
-   if (my $stdin = $self->{IPC_STDIN}) {
-       $cmd .= "\n" . $stdin;
-   }
+   $cmd .= "\n$self->{IPC_STDIN}\n" if $self->{IPC_STDIN};
 
    # Send cmd, get back stdout/stderr in the IPC_STD(OUT|ERR) arrays.
    $self->_puts($cmd);
 
-   # This is a one-time-use hack, if present. Delete it here in
-   # case _puts() (or an @ISA variant thereof) needs to reference it.
+   # IPC_STDIN is a one-shot-use if present but don't delete it till here
+   # in case _puts() (or an @ISA variant thereof) needs to reference it.
    delete $self->{IPC_STDIN};
 
    # This line should be self-documenting ... well, ok, we're
@@ -190,7 +188,7 @@ sub cmd {
 
 sub stdin {
     my $self = shift;
-    $self->{IPC_STDIN} = "@_" if @_;
+    chomp($self->{IPC_STDIN} = "@_") if @_;
     return $self->{IPC_STDIN};
 }
 
