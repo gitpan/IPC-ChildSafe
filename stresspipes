@@ -1,0 +1,9 @@
+# Spit out lots of weirdly-shaped data to stdout and stderr
+# in order to provide a stress test.
+
+my $reps = shift;
+for (1..$reps) {
+    print STDERR "$_:\tXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n";
+}
+print STDOUT ' ' x ($reps*2), "x\n";
+exit 0;

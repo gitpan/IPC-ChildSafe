@@ -1,26 +1,28 @@
 # Before `make install' is performed this script should be runnable with
 # `make test'. After `make install' it should work as `perl test.pl'
 
-######################### We start with some black magic to print on failure.
+my $final = 0;
 
-# Change 1..1 below to 1..last_test_to_print .
-# (It may become useful if the test is moved to ./t subdirectory.)
-
-BEGIN { $| = 1; print "1..2\n"; }
-END {print "not ok 1\n" unless $loaded;}
-use IPC::ClearTool;
-$loaded = 1;
-print "ok 1\n";
-
-######################### End of black magic.
-
-# Test #2 
-if (-x '/usr/atria/bin/cleartool') {
-   my $CT = IPC::ClearTool->new;
-   die "not ok 2" if $CT->cmd('pwv');
-   die "not ok 2" if $CT->stdout != 2;	# expect two lines of output
-   die "not ok 2" if $CT->finish;
-} else {
-   warn "\nWarning: no ClearCase installed on this system!!!\n";
+# Automatically generates an ok/nok msg, incrementing the test number.
+BEGIN {
+   $| = 1;
+   my($next, @msgs);
+   sub printok {
+      push @msgs, ($_[0] ? '' : 'not ') . "ok @{[++$next]}\n";
+      return !$_[0];
+   }
+   END {
+      print "\n1..", scalar @msgs, "\n", @msgs;
+   }
 }
-print "ok 2\n";
+
+use IPC::ClearTool;
+$final += printok(1);
+
+if ($^O !~ /win32/i && ! -x '/usr/atria/bin/cleartool') {
+   warn "\nNo ClearCase found on this system, IPC::ClearTool not tested\n";
+   exit 0;
+}
+
+my $CT = IPC::ClearTool->new;
+printok($CT->cmd('pwv') == 0 && $CT->stdout == 2 && $CT->finish == 0);

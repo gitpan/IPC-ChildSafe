@@ -7,12 +7,14 @@
 #include <unistd.h>
 
 #include "childsafe.h"
+#include "npoll.h"
 
 /**
  ****************************************************************************
- ** Copyright (c) 1997 David Boyce (dsb@world.std.com). All rights reserved.
+ ** Copyright (c) 1997,1999 David Boyce (dsb@world.std.com).
+ ** All rights reserved.
  ** This program is free software; you can redistribute it and/or
- ** modify it under the same terms as Perl itself.
+ ** modify it under the same terms as Perl.
  ****************************************************************************
  ** To understand the C code and underlying design, look at
  ** W.R. Stevens (Advanced Programming in the Unix Environment)
@@ -20,30 +22,30 @@
  ** with coprocesses using ptys. This code goes way beyond any discussions
  ** of coprocesses in Stevens but he does a good job describing the
  ** issues and defining terms. Also look at the comments in
- ** IPC::Open3.pm in the Perl5 distribution. Then look at ChildSafe.html
- ** (part of this distribution).
+ ** IPC::Open3.pm in the Perl5 distribution.
  ** Some of the code here was cut-and-pasted directly from the
  ** examples given by Stevens (ISBN 0-201-56317-7).
  **/
+
+
+static char *xs_ver = "@(#) IPC::ChildSafe " XS_VERSION;
 
 /** Used for debugging output **/
 #define F __FILE__
 #define L __LINE__
 
-/** Conveniences **/
-#define TRUE 1
-#define FALSE 0
+/** Convenience **/
+#ifndef NUL
 #define NUL '\0'
+#endif
 
 /** Ok, these should be dynamic allocations ... maybe someday **/
-#define STDLINE 1024
-#define BIGLINE	16384
+#define STDLINE 2048
+#define BIGLINE	(STDLINE<<3)
+
 
 /** Print debugging messages that assert this level (0=off, 1=low, ...) **/
 int Debug_Level = 0;
-
-/** Poll stderr every Alarm_Wait seconds while blocked on read **/
-int Alarm_Wait = 5;
 
 static CHILD *mru_handle;	/* most-recently-used handle */
 
@@ -135,11 +137,7 @@ _cp_newstr(const char *fmt,...)
 {
    va_list ap;
    char *ptr;
-#if defined(ARG_MAX)
-   char buf[ARG_MAX];
-#else
-   char buf[_POSIX_ARG_MAX];
-#endif
+   char buf[BIGLINE];
 
    va_start(ap, fmt);
    (void) vsprintf(buf, fmt, ap);
@@ -151,103 +149,12 @@ _cp_newstr(const char *fmt,...)
    return strcpy(ptr, buf);
 }
 
-/**
- ** Sets non-blocking mode on the specified file descriptor.
+/** Obsolete but left for reasons of laziness - the SWIG
+ ** wrapper code thinks they still exist.
  **/
-static int
-_cp_nonblocking(int fd)
-{
-   int old = fcntl(fd, F_GETFL, 0);
-   if (fcntl(fd, F_SETFL, old | O_NONBLOCK) < 0)
-      _cp_syserr("fcntl:F_SETFL");
-   return old;
-}
-
-static int
-_cp_poll_stderr(CHILD *handle, int show)
-{
-   char line[STDLINE];
-
-   UPDATE_HANDLE(handle, mru_handle, 0);
-
-   _dbg(F,L,4, "polling standard error ...");
-   while (fgets(line, sizeof(line), handle->cph_err) != NULL) {
-      if (show != CP_NO_SHOW_ERR)
-	 (void) fputs(line, stderr);
-      else
-	 _dbg(F,L,2, "<<== (NO_SHOW) %s", line);
-
-      /**
-       ** Lines that look like warnings or shell-generated verbose output
-       ** are ignored; anything we don't recognize is considered an
-       ** error.
-       **/
-      if ((line[0] == '+' && line[1] == ' ') || strstr(line, "arning: "))
-	 continue;
-
-      /** Looks like an error **/
-      handle->cph_errs++;
-   }
-
-   return handle->cph_errs;
-}
-
-/*
- * See comment for child_gets_stdout_perl.
- */
-char *
-child_get_stderr_perl(CHILD *handle)
-{
-   char buf[STDLINE];
-
-   UPDATE_HANDLE(handle, mru_handle, 0);
-
-   if (fgets(buf, sizeof(buf), handle->cph_err) == NULL)
-      return NULL;
-   _dbg(F,L,2, "<<== %s", buf);
-   return _cp_newstr("%s", buf);
-}
-
-/**
- ** It's possible for the parent to block for a long time while
- ** reading from the child, because the child is hung on some other event.
- ** The classic example is the child needs a resource from an NFS server
- ** which is down.  In this situation, hanging until the server returns
- ** is the right thing to do; the problem is that there's a message
- ** "NFS server foo not responding, still trying" waiting on the
- ** stderr pipe and it's not being seen by the user, which can lead
- ** them to wonder what's up.  So we set this SIGALRM handler, which
- ** periodically polls the child's stderr, transfers any output it finds
- ** there to parent's stderr, and re-starts the blocked read.
- */
-static void
-_cp_flush_stderr(int signo)
-{
-   if (mru_handle) {
-      if (signo == SIGALRM)
-	 _dbg(F,L,3, "flushing stderr pipe on timeout ...");
-      else if (signo == -1)
-	 _dbg(F,L,3, "flushing stderr pipe on async exit ...");
-      else
-	 _dbg(F,L,3, "flushing stderr pipe on signal %d ...", signo);
-      (void) _cp_poll_stderr(mru_handle, CP_SHOW_ERR);
-      /** Restart the alarm clock **/
-      if (signo == SIGALRM)
-	 (void) alarm(Alarm_Wait);
-   }
-}
-
-/**
- ** This is intended to catch cases where the program calls exit()
- ** without having first flushed the stderr pipe via child_end().
- ** This uses the signal handler though there's no actual signal
- ** associated.  Just like pseudo-signals in ksh such as trap on EXIT.
- */
-static void
-_cp_flush_stderr_at_exit(void)
-{
-   _cp_flush_stderr(-1);
-}
+int Alarm_Wait;
+char * child_get_stdout_perl(CHILD *handle) {return NULL;}
+char * child_get_stderr_perl(CHILD *handle) {return NULL;}
 
 /**
  ** We did a "lazy fork" when opening the coprocess ... now it's been
@@ -270,7 +177,7 @@ _cp_start_child(CHILD *handle)
    if ((pid = fork()) < 0)
       _cp_syserr("fork");
    else if (pid > 0) {
-      _dbg(F,L,1, "starting child %s (pid=%d) ...", handle->cph_cmd, pid);
+      _dbg(F,L,3, "starting child %s (pid=%d) ...", handle->cph_cmd, pid);
       (void) close(down_pipe[0]);
       if ((downfp = fdopen(down_pipe[1], "w")) == NULL)
 	 _cp_syserr("fdopen");
@@ -284,7 +191,6 @@ _cp_start_child(CHILD *handle)
 	 _cp_syserr("setvbuf");
 
       (void) close(err_pipe[1]);
-      (void) _cp_nonblocking(err_pipe[0]);
       if ((errfp = fdopen(err_pipe[0], "r")) == NULL)
 	 _cp_syserr("fdopen");
 
@@ -308,26 +214,6 @@ _cp_start_child(CHILD *handle)
        ** Note that both parent and child sides of the fork
        **/
       (void) setpgid(pid, pid);
-
-      /**
-       ** Register an exit handler to make sure we read any waiting
-       ** stderr data before exiting.
-       **/
-      (void) atexit(_cp_flush_stderr_at_exit);
-
-      /** See comments on SIGALRM in _cp_flush_stderr() and _child_gets() **/
-      {
-	 struct sigaction act, oact;
-	 act.sa_handler = _cp_flush_stderr;
-	 if (sigemptyset(&act.sa_mask))
-	    _cp_syserr("sigemptyset");
-	 act.sa_flags = 0;
-#ifdef	SA_RESTART
-	 act.sa_flags |= SA_RESTART;	/* SVR4, 44BSD */
-#endif
-	 if (sigaction(SIGALRM, &act, &oact) < 0)
-	    _cp_syserr("sigaction");
-      }
 
       return 0;
    } else {
@@ -367,22 +253,6 @@ _cp_start_child(CHILD *handle)
    return -1;
 }
 
-/**
- ** This is how we "seek forward" to the <RET> token if there was
- ** any unused data left in the stdout pipe. This needs to be done
- ** to stay in sync and also to avoid any SIGPIPEs.
- **/
-static void
-_cp_sync(CHILD *handle)
-{
-   char no_show[STDLINE];
-
-   /** Get rid of any unused remaining output **/
-   if (handle->cph_pending == TRUE)
-      while (child_gets(no_show, sizeof(no_show), handle) != NULL)
-	 _dbg(F,L,2, "<<-- (NO_SHOW) %s", no_show);
-}
-
 /*
  * Starts the specified prog as a coprocess. Returns a single file pointer
  * which handles both input to and output from the process. Also returns
@@ -412,6 +282,32 @@ child_open(char *cmd, char *tag, char *eot, char *quit)
    return handle;
 }
 
+int bck_read( void* handle, char* buf, int len ){
+  if( len ){
+    if( !strncmp( buf, ((CHILD*)handle)->cph_eot, len ) ){
+      _dbg(F,L,3, "logical end of stdin from %s", ((CHILD*)handle)->cph_cmd );
+      return NPOLL_RET_IDLE;
+    } else {
+      _dbg(F,L,2, "<<-- %.*s", len, buf);
+      Perl_av_push( ((CHILD*)handle)->cph_out_array , Perl_newSVpv( buf, len ) );
+      return NPOLL_CONTINUE;
+    }
+  } else {
+    _dbg(F,L,3, "eof on stdin from %s", ((CHILD*)handle)->cph_cmd );
+    return NPOLL_RET_IDLE;
+  }
+}
+
+int err_read( void* handle, char* buf, int len ){
+  _dbg(F,L,2, "<<== %.*s", len, buf);
+  if( len ){
+    Perl_av_push( ((CHILD*)handle)->cph_err_array , Perl_newSVpv( buf, len ) );
+    return NPOLL_CONTINUE;
+  } else {
+    return NPOLL_RET_IDLE;
+  }
+}
+
 /**
  ** Analogue: fputs().
  ** Sends two commands to the child: first the "real command", then the
@@ -426,21 +322,29 @@ child_open(char *cmd, char *tag, char *eot, char *quit)
  ** any commands and will incur no fork/exec overhead.
  **/
 int
-child_puts(char *s, CHILD *handle)
+child_puts(char *s, CHILD *handle, AV* perl_out_array, AV* perl_err_array)
 {
    int n;
 
-   if (handle == NULL) handle = mru_handle;
-   if ((mru_handle = handle) == NULL) return 0;
+   if (handle == NULL)
+      handle = mru_handle;
+   if ((mru_handle = handle) == NULL)
+      return 0;
    if (handle->cph_pid == 0) {
       if (_cp_start_child(handle) != 0) {
 	 fprintf(stderr, "can't start child %s\n",  handle->cph_cmd);
 	 exit(1);
       }
+      /* Add file descriptors to poll vector. */
+      poll_add_fd( fileno(handle->cph_back),
+                   NPOLL_TXT, bck_read, NULL, handle );
+      poll_add_fd( fileno(handle->cph_err),
+                   NPOLL_TXT, err_read, NULL, handle );
    }
 
-   /** throw away any remaining output from the previous command **/
-   _cp_sync(handle); 
+   /* Save Perl array references for access from callbacks. */
+   handle->cph_out_array = perl_out_array;
+   handle->cph_err_array = perl_err_array;
 
    _dbg(F,L,1, "-->> %s", s);
 
@@ -460,8 +364,13 @@ child_puts(char *s, CHILD *handle)
       return EOF;
    handle->cph_pending = TRUE;
    _dbg(F,L,4, "pending ...");
+
+   /** poll **/
+   poll_rcv( NPOLL_NO_TIMEOUT ); 
+
    return n;
 }
+
 
 /**
  ** Analogue: fgets().
@@ -482,20 +391,8 @@ child_gets(char *s, int n, CHILD *handle)
    if (s == NULL)
       n = sizeof(buf);
 
-   /**
-    ** Do the read from the child, which may block.  We wrap it
-    ** in an alarm handler so we can flush any pending stderr.
-    ** This will happen in situations where the child blocks for
-    ** a long time with a warning, such as when an NFS server is
-    ** down. We automatically restart the read after the SIGALRM.
-    ** Note: if Alarm_Wait is set to 0, this feature will be disabled.
-    */
-   if (Alarm_Wait)
-      (void) alarm(Alarm_Wait);
    if (fgets(buf, n, handle->cph_back) == NULL)
       return NULL;
-   if (Alarm_Wait)
-      (void) alarm(0);
 
    if (!strcmp(buf, handle->cph_eot)) {
       if (handle->cph_pending == TRUE) {
@@ -513,32 +410,12 @@ child_gets(char *s, int n, CHILD *handle)
 }
 
 /**
- ** Hack for Perl/SWIG: couldn't seem to figure out how to pass a
- ** NULL ptr from Perl to child_gets(), so we use this intermediary
- ** function. The malloc-ed line is freed in SWIG's wrapper via %new.
- **/
-char *
-child_get_stdout_perl(CHILD *handle)
-{
-   return child_gets(NULL, 0, handle);
-}
-
-/**
- ** We call this when a subcommand is finished, or at least we've
- ** gotten all the output from it we need ... this flushes anything
- ** remaining on the stdout pipe and polls stderr for possible
- ** error messages.
+ ** Call this when a subcommand is finished.
  **/
 int
 child_end(CHILD *handle, int show_err)
 {
-   int retcode;
-
-   UPDATE_HANDLE(handle, mru_handle, 0);
-
-   _cp_sync(handle);
-
-   return _cp_poll_stderr(handle, show_err);
+   return handle->cph_errs;
 }
 
 /**
@@ -575,13 +452,8 @@ child_close(CHILD *handle)
    if (handle->cph_pid == 0)
       return 0;
 
-   /** ensure there's no output remaining on the stdout pipe ... **/
-   _cp_sync(handle);
-
    /** ... likewise for the stderr **/
    (void) child_end(handle, CP_SHOW_ERR);
-
-   _dbg(F,L,1, "closing child %s (%d)", handle->cph_cmd, handle->cph_pid);
 
    /** Optionally, explicitly tell the child to give up the ghost */
    if (handle->cph_quit && *(handle->cph_quit)) {
@@ -590,6 +462,11 @@ child_close(CHILD *handle)
       (void) fputs(handle->cph_quit, handle->cph_down);
    }
 
+   /** Remove the back and err file descriptors from npoll **/
+   poll_del_fd( fileno(handle->cph_back) );
+   poll_del_fd( fileno(handle->cph_err) );
+
+
    /** Close the input pipe to the child, which should die gracefully. **/
    if (fclose(handle->cph_down) == EOF
 	 || fclose(handle->cph_back) == EOF
@@ -597,12 +474,24 @@ child_close(CHILD *handle)
       return -1;
 
    /** Reap the child. **/
-   while ((done = waitpid(handle->cph_pid, &retstat, WNOHANG)) <= 0)
+   while ((done = waitpid( handle->cph_pid, &retstat, WNOHANG)) <= 0)
       if (done < 0 && errno != EINTR)
 	 return -1;
 
-   if (handle != NULL)
+   _dbg(F,L,3, "ended child %s (%d) d=%d r=%d",
+        handle->cph_cmd, handle->cph_pid, done, retstat );
+
+   if (handle != NULL) {
+      if (handle->cph_cmd)
+	  free(handle->cph_cmd);
+      if (handle->cph_tag)
+	  free(handle->cph_tag);
+      if (handle->cph_eot)
+	  free(handle->cph_eot);
+      if (handle->cph_quit)
+	  free(handle->cph_quit);
       free(handle);
+   }
    mru_handle = NULL;
 
    return _cp_retcode(retstat);

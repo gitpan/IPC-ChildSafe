@@ -127,21 +127,27 @@ Installation consists of the usual sequence of commands:
 TESTED PLATFORMS
 ----------------
 
-The bulk of my testing has been on Solaris 2.5.1 and Perl 5.004_04,
-though as of version 2.30 it's know to work on Linux 6.0 as well.
-CPAN-testers say it works on HP-UX 10 too.
+The bulk of my testing has been on Solaris 2.5.1 and 7 and Perl
+5.004_04 and 5.005_03, though as of version 2.30 it's known to work on
+Redhat Linux 6.0 as well.  CPAN-testers say it works on HP-UX 10 too.
 
 The C code has also been tested briefly on SGI IRIX 5.3 and AIX 4.2
 systems.  The Perl module requires Perl 5.004 or above, due to
 dependence on wantarray() semantics which were added in that release.
 There are presumably other dependencies on 5.004.
 
-I haven't attempted to use this on Windows NT.  I'm sure the Perl code
-would be easy to port, and SWIG is reputed to work with NT.  I really
-don't know how similar the semantics of pipes, stdio, etc. are on NT so
-the C code is a mystery, and of course fork() is always problematical
-on NT.  I assume it's at least portable to NT given that many far more
-ambitious packages are ported.
+I haven't attempted to use ChildSafe on Windows NT.  I'm sure the Perl
+code would be easy to port, and SWIG is reputed to work with NT.  I
+really don't know how similar the semantics of pipes, stdio, etc. are
+on NT so the C code is a mystery, and of course fork() is always
+problematical on NT.  I assume it's portable to NT with some unknown
+amount of effort given that many far more ambitious tools are ported.
+
+HOWEVER - note that as of version 3.01, B<IPC::ClearTool> _does_ work on
+Windows NT as long as you have ClearCase 3.2.1 or above. That's because
+IPC::ClearTool has been modified to use the ClearCase COM interface
+on Windows and thus doesn't need the C code. See the PODs for
+IPC::ClearTool.
 
 SWIG
 ----
@@ -160,7 +166,7 @@ The C code has been built standalone on a number of platforms with a
 number of compilers and thus is pretty standardly portable.  As a Perl
 module, with the SWIG stubs, it should be built with the same compiler
 you built perl with according to "perl -V". In my case this has been
-gcc, so if all else fails for gcc with "perl Makefile.PL CC=gcc".
+gcc, so if all else fails try gcc with "perl Makefile.PL CC=gcc".
 
 TESTING
 -------

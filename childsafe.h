@@ -14,6 +14,10 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 
+#include "EXTERN.h"
+#include "perl.h"
+#include "XSUB.h"
+
 /** This is analogous to a FILE handle for fopen/fgets/fputs/fclose. **/
 typedef struct
 {
@@ -27,11 +31,13 @@ typedef struct
     pid_t cph_pid;
     unsigned cph_errs;
     unsigned cph_pending;
+    AV   *cph_out_array;
+    AV   *cph_err_array;
 } CHILD;
 
 /** Public C interfaces in childsafe.c **/
 extern CHILD *child_open(char *, char *, char *, char *);
-extern int child_puts(char *, CHILD *);
+extern int child_puts(char *, CHILD *, AV *, AV *);
 extern char *child_gets(char *, int, CHILD *);
 extern int child_end(CHILD *, int);
 extern int child_close(CHILD *);

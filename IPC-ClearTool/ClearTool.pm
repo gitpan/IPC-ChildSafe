@@ -3,29 +3,84 @@ package IPC::ClearTool;
 use strict;
 use vars qw($VERSION @ISA @EXPORT_OK %EXPORT_TAGS);
 
-use IPC::ChildSafe;
+BEGIN {
+    if ($^O =~ /win32/i) {
+	require Win32::OLE;
+    }
+}
+
+use IPC::ChildSafe 2.34;
 @EXPORT_OK = @IPC::ChildSafe::EXPORT_OK;
 %EXPORT_TAGS = ( BehaviorMod => \@EXPORT_OK );
-
 @ISA = q(IPC::ChildSafe);
 
 # The current version and a way to access it.
-$VERSION = "1.11"; sub version {$VERSION}
+$VERSION = "2.00"; sub version {$VERSION}
 
-sub new
-{
-   my $proto = shift;
-   my $class = ref($proto) || $proto;
-   my $ct = join('/', $ENV{ATRIAHOME} || '/usr/atria', 'bin/cleartool');
-   $ct = 'cleartool' unless -x $ct;
-   my $chk = sub {
-      my($r_stderr, $r_stdout) = @_;
-      return int grep /Error:\s/, @$r_stderr;
-   };
-   my %params = ( QUIT => 'exit', CHK => $chk );
-   my $self = $class->SUPER::new($ct, 'pwd -h', 'Usage: pwd', \%params);
-   bless ($self, $class);
-   return $self;
+sub new {
+    my $proto = shift;
+    my $class = ref($proto) || $proto;
+
+    if ($^O =~ /win32/i) {
+	return $class->SUPER::new(@_);
+    }
+
+    my $ct = join('/', $ENV{ATRIAHOME} || '/usr/atria', 'bin/cleartool');
+    $ct = 'cleartool' unless -x $ct;
+    my $chk = sub {
+	my($r_stderr, $r_stdout) = @_;
+	return int grep /Error:\s/, @$r_stderr;
+    };
+    my %params = ( QUIT => 'exit', CHK => $chk );
+    my $self = $class->SUPER::new($ct, 'pwd -h', 'Usage: pwd', \%params);
+    bless ($self, $class);
+    return $self;
+}
+
+sub comment {
+    my $self = shift;
+    my $cmnt = shift;
+    $self->stdin("$cmnt\n.");
+    return $self;
+}
+
+sub _open {
+    my $self = shift;
+    if ($^O =~ /win32/i) {
+	$self->{IPC_CHILD} = Win32::OLE->new('ClearCase.ClearTool')
+			|| die "Cannot create ClearCase.ClearTool object\n";
+	Win32::OLE->Option(Warn => 0);
+	return $self;
+    }
+    return $self->SUPER::_open(@_);
+}
+
+sub _puts {
+    my $self = shift;
+    if ($^O =~ /win32/i) {
+	my $cmd = shift;
+
+	# Send the command down to the child.
+	my $out = $self->{IPC_CHILD}->CmdExec($cmd)
+		|| die("Cleartool error: ", Win32::OLE->LastError, "\n");
+	# CmdExec always returns a scalar through Win32::OLE so
+	# we have to split it in case it's really a list.
+	push(@{$self->{IPC_STDOUT}}, $self->_fixup_COM_scalars($out));
+	my $error = Win32::OLE->LastError;
+	$self->{IPC_STATUS} = int $error;		# numeric form
+	push(@{$self->{IPC_STDERR}}, $error) if $error;	# string form
+	return $self;
+    }
+    return $self->SUPER::_puts(@_);
+}
+
+sub finish {
+    my $self = shift;
+    if ($^O =~ /win32/i) {
+	undef $self->{IPC_CHILD};
+	return undef;
+    }
+    return $self->SUPER::finish(@_);
 }
 
 1;
@@ -111,6 +166,53 @@ part of IPC::ChildSafe. Note that IPC::ClearTool is simply a very small
 subclass of IPC::ChildSafe; it merely provides the right defaults to
 IPC::ChildSafe's constructor for running cleartool. In all other ways
 it is identical to ChildSafe and all ChildSafe documentation applies.
+
+=head1 WIN32 ISSUES
+
+On UNIX, this module works by running cleartool as a child process.  On
+Windows, the ClearCase Automation Library (a COM API) is used instead.
+B<This provides the same interface but be warned that there's a subtle
+semantic difference!> On UNIX you can send a setview command to the
+child and it will run in the new view while the parent's environment
+remains unchanged. On Windows there's no subprocess; thus the setview
+would change the context of the "parent process".  The same applies to
+chdir commands. It's unclear which behavior is "better" overall, but in
+any case portable applications must take extra care in using such
+stateful techniques.
+
+Also, due to the way Win32::OLE works, on Windows the results of each
+command are passed back as a single string, possibly with embedded
+newlines. For consistency, in a list context we split this back into
+lines and return the list. However, it's possible for this to result in
+a different line count for the same command in UNIX and NT, if one of
+the lines would have had embedded newlines in it anyway.
+
+The ClearCase/COM API isn't documented until CC 4.0, but it's actually
+present (at least the IClearTool interface, which is what
+IPC::ClearTool uses) in 3.2.1 with one major bug - all output arrives
+backwards! So we provide a class method
+
+	IPC::ClearTool->cc_321_hack;
+
+which, if called, will determine whether it's running on CC 3.2.1 and
+if so reverse the order of output. 
+
+=head1 BUGS
+
+Comments present a special problem. If a comment is prompted for, it
+will likely hang the child process by interrupting the tag/eot
+sequencing. So we prefer to pass comments on the command line with C<-c>.
+Unfortunately, the quoting rules of cleartool are insufficient to allow
+passing comments with embedded newlines using C<-c>. The result being
+that there's no clean way to handle multi-line comments.
+
+To work around this, a method C<$CT->comment> is provided which
+registers a comment I<to be passed to the next C<$CT->cmd()> command>.
+It's placed in the stdin stream with a trailing ".\n" appended.
+The subsequent command must have a C<-cq> flag, e.g.:
+
+    $CT->comment("Here's a\nmultiple line\ncomment");
+    $CT->cmd("ci -cq foo.c");
 
 =head1 AUTHOR
 

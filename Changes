@@ -101,3 +101,51 @@ Revision history for Perl extension IPC::ChildSafe.
 	  of the coprocess object to hang upon closing. Of course
 	  multiple instances are rare - the whole point of this
 	  module is to replace many processes with one.
+
+3.01 Mon Dec  6 11:29:47 EST 1999
+	- Major version bumped to recognize a complete rewrite of
+	  the C code contributed by Wolfgang Laun
+	  (Wolfgang.Laun@chello.at).  This version uses poll() and
+	  should show performance and robustness improvements. In
+	  particular it will not stall if the stderr pipe fills up as
+	  the old one did.
+	- Semi-ported to Win32. "Semi" in this case means that the
+	  IPC::ChildSafe module is modified to install without the XSUB
+	  code (the part that's hard to port to Windows). Of
+	  course ChildSafe by itself is useless without the XSUB code
+	  so why do this? Because IPC::ClearTool can (and now does)
+	  subclass ChildSafe and override the methods that use
+	  the compiled code, using instead the ClearCase Automation
+	  Library (CAL), a COM interface new in CC 3.2.1.  Thus, although
+	  IPC::ChildSafe still doesn't work in Windows its subclass
+	  IPC::ClearTool does (as of CC 3.2.1).
+	- NOTE: THIS RELEASE BREAKS SOME BACKWARD COMPATIBILITY!!
+	  It just seemed that this was a major enough rewrite,
+	  and the benefits of it important enough, that it was
+	  the right time to jettison some old back-compat things
+	  that were cluttering up the code. The important one is that
+	  there's no longer a standalone C API; the C code is now
+	  tuned to work directly with Perl. The previous C API
+	  (from version 2.33) still works fine so if you need
+	  C just stick with that. Or fix up the new one yourself;
+	  there's nothing to keep it from working as a C API, I
+	  just didn't get around to adding it.
+	- Other compatibility issues: a couple of old method names
+	  (command, debug) that were being kept around are now gone.
+	  The modern names are 'cmd' and 'dbglevel'.
+	- Allow mode methods to take a zero arg to reset the
+  	  attribute, viz.: $obj-store(0).
+
+3.02 Mon Dec 20 07:54:18 EST 1999
+	- Fixed a porting bug for HP/UX found by Paul Schinder.
+	- Fixed a typo: IPC_MOD => IPC_MODE
+
+3.03 Wed Dec 22 09:44:24 EST 1999
+	- Portability patch for SunOS4.
+
+3.04 Wed Dec 22 12:07:35 EST 1999
+	- Urk - another SunOS4 fix (for platforms without ssize_t).
+	- This version tested on Solaris 2.5/6/7, SunOS4, Compaq OSF/1 V4.0,
+	  HP/UX 10.20, and AIX 4.3 in various combinations with
+	  Perl 5.004 and 5.005.
+	- Cleaned up some test scripting issues.

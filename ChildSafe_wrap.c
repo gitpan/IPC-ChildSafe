@@ -76,7 +76,7 @@ extern "C" {
 
 
 /*****************************************************************************
- * $Header: /vobs_fw/ChildSafe/ChildSafe_wrap.c /main/2 17-Nov-1999 14:55:24 dsb $
+ * $Header: /vobs_fw/ChildSafe/ChildSafe_wrap.c /main/4 6-Dec-1999 16:27:28 dsb $
  *
  * perl5ptr.swg
  *
@@ -109,7 +109,7 @@ extern "C" {
  * can be used in a multi-module environment by redefining the symbol
  * SWIGSTATIC.
  *
- * $Log:  $
+ * $Log:    $
  * Revision 1.1  1996/12/26 22:17:29  beazley
  * Initial revision
  *
@@ -526,18 +526,34 @@ XS(_wrap_child_puts) {
     int  _result;
     char * _arg0;
     CHILD * _arg1;
+    AV * _arg2; /* XXX */
+    AV * _arg3; /* XXX */
     int argvi = 0;
+    int svt;
     dXSARGS ;
 
     cv = cv;
-    if ((items < 2) || (items > 2)) 
-        croak("Usage: child_puts(char *,CHILD *);");
+    if ((items < 4) || (items > 4)) 
+        croak("Usage: child_puts(char *,CHILD *,ARRAYref,AARAYref);");
     _arg0 = (char *) SvPV(ST(0),PL_na);
     if (SWIG_GetPtr(ST(1),(void **) &_arg1,"CHILDPtr")) {
         croak("Type error in argument 2 of child_puts. Expected CHILDPtr.");
         XSRETURN(1);
     }
-    _result = (int )child_puts(_arg0,_arg1);
+    if( SvROK(ST(2)) && SvTYPE(SvRV(ST(2))) == SVt_PVAV ){
+      _arg2 = (AV*)SvRV(ST(2));
+    } else {
+      croak("Type error in argument 3 of child_puts. Expected ARRAYPtr.");
+      XSRETURN(1);
+    }
+    if( SvROK(ST(3)) && SvTYPE(SvRV(ST(3))) == SVt_PVAV ){
+      _arg3 = (AV*)SvRV(ST(3));
+    } else {
+      croak("Type error in argument 4 of child_puts. Expected ARRAYPtr.");
+      XSRETURN(1);
+    }
+
+    _result = (int )child_puts(_arg0,_arg1,_arg2,_arg3);
     ST(argvi) = sv_newmortal();
     sv_setiv(ST(argvi++),(IV) _result);
     XSRETURN(argvi);

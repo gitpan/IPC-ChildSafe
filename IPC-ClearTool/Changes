@@ -1,6 +1,10 @@
 Revision history for Perl extension IPC::ClearTool.
 
 1.00  Mon May  4 15:09:16 1998
-	- A trivial subclass of IPC::ChildSafe->new()
-	which simply defaults its arguments to those
-	which make it work with 'cleartool'.
+	- A trivial subclass of IPC::ChildSafe->new() which simply
+	  defaults its args to some which make it work with cleartool.
+
+2.00 Wed Dec  1 23:00:07 EST 1999
+	- Ported to Windows NT/ClearCase 4.0. This is done by using
+	  the ClearCase Automation Library (aka CAL) COM interface
+	  instead of the XS layer used on UNIX.

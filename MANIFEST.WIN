@@ -1,20 +1,15 @@
 Changes
 ChildSafe.i
 ChildSafe.pm
-ChildSafe_wrap.c
 ChildSafe_wrap.html
 MANIFEST
-MANIFEST.WIN
 Makefile.PL
 README
-childsafe.c
 childsafe.h
-npoll.c
-npoll.h
 examples/Makefile
 examples/ccdemo.c
 examples/shdemo.c
-t/ChildSafe.t
+test.pl
 stresspipes
 IPC-ClearTool/Changes
 IPC-ClearTool/ClearTool.pm
@@ -24,4 +19,4 @@ IPC-ClearTool/examples/ccbm-one.pl
 IPC-ClearTool/examples/ccbm-mul.pl
 IPC-ClearTool/examples/ccdemo.pl
 IPC-ClearTool/examples/daily_changes.pl
-IPC-ClearTool/t/ClearTool.t
+IPC-ClearTool/test.pl

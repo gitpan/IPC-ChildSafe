@@ -11,23 +11,41 @@ use constant	STORE  => 1;	# store stderr msgs for later retrieval
 use constant	PRINT  => 2;	# send all output to screen immediately
 use constant	IGNORE => 3;	# throw away all output, ignore retcode
 
-# This is retained for backward compatibility. Modern uses should
-# employ the methods of the same name, e.g. $obj->store(1);
+# This is retained mostly for backward compatibility. Modern uses should
+# (generally) employ the methods of the same name, e.g. $obj->store(1);
 @EXPORT_OK = qw(NOTIFY STORE PRINT IGNORE);
 
 require Exporter;
 require DynaLoader;
 @ISA = qw(Exporter DynaLoader);
 
-# SWIG-generated XS code.
-bootstrap IPC::ChildSafe;
-var_ChildSafe_init();
+# An unusual situation - we allow the pure-Perl module to be installed
+# successfully on Windows platforms without the related XS code. Not
+# having the XS code means that IPC::ChildSafe cannot work, but
+# its subclass IPC::ClearTool can since it replaces the methods
+# which rely on the XS code anyway.
+if ($^O !~ /win32/i) {
+    # SWIG-generated XS code.
+    bootstrap IPC::ChildSafe;
+    var_ChildSafe_init();
+}
 
 # The current version and a way to access it.
-$VERSION = "2.33"; sub version {$VERSION}
+$VERSION = "3.04"; sub version {$VERSION}
+
+# This is an undocumented service method, used only by the
+# constructor. It's broken out to make it easier for the
+# IPC::ClearTool module to override a minimal amount of code.
+sub _open {
+   my $self = shift;
+   local $^W = 0;
+   $self->{IPC_CHILD} = \child_open(@_);
+   return $self;
+}
 
 ########################################################################
-# Just a thin layer over child_open (see childsafe.c). We also allow an
+# Constructor - this is just a layer over child_* (see childsafe.c
+# and takes largely the same arguments.  We also allow an
 # optional last arg which is a hash-ref containing miscellaneous params.
 # This isn't published, it's really just a hack to allow the ClearTool
 # subclass to work more smoothly. We also support, for backward compat,
@@ -60,34 +78,48 @@ sub new {
 
    # Initialize the hash which will represent this object.
    my $self  = {
-      _CHILD	=> undef,
-      _ERRCHK	=> undef,
-      _MODE	=> $mode || NOTIFY,
-      _STDOUT	=> undef,
-      _STDERR	=> undef,
+      IPC_CHILD		=> undef,
+      IPC_ERRCHK	=> undef,
+      IPC_MODE		=> $mode || NOTIFY,
+      IPC_STDOUT	=> undef,
+      IPC_STDERR	=> undef,
    };
+   bless ($self, $class);
 
    if ($chk) {
-      $self->{_ERRCHK} = $chk;
+      $self->{IPC_ERRCHK} = $chk;
    } else {
-      $self->{_ERRCHK} = sub
+      $self->{IPC_ERRCHK} = sub
 	 {
 	    my($r_stderr, $r_stdout) = @_;
 	    grep(!/^\+\s|warning:/i, @$r_stderr);
 	 };
    }
 
-   {
-       local $^W = 0;
-       $self->{_CHILD} = \child_open($cmd, $tag, $ret, $quit);
-   }
-   @{$self->{_STDOUT}} = ();
-   @{$self->{_STDERR}} = ();
+   $self->_open($cmd, $tag, $ret, $quit);
 
-   bless ($self, $class);
+   @{$self->{IPC_STDOUT}} = ();
+   @{$self->{IPC_STDERR}} = ();
+
    return $self;
 }
 
+# Unpublished - the guts that sends a command to the copro and
+# sticks the results on the stacks. Separated from the 'cmd'
+# method for the same reason give with _open() above.
+sub _puts {
+   my $self = shift;
+   my $cmd = shift;
+
+   # Send the command down to the child.
+   child_puts($cmd, ${$self->{IPC_CHILD}},
+		      $self->{IPC_STDOUT}, $self->{IPC_STDERR});
+   return $self;
+}
+
+########################################################################
+# Documented in PODs below.
+########################################################################
 sub cmd {
    my $self = shift;
    my($cmd, $mode, @junk) = @_;
@@ -97,127 +129,154 @@ sub cmd {
    # If used in void context with no args, throw away all stored output.
    if (! $cmd) {
       croak "must provide a command line" if defined wantarray;
-      $self->{_STDOUT} = [];
-      $self->{_STDERR} = [];
+      $self->{IPC_STDOUT} = [];
+      $self->{IPC_STDERR} = [];
       return;
    }
 
-   # Send the command down to the child.
-   child_puts($cmd, ${$self->{_CHILD}});
+   # If the command will need to read input from stdin, provide
+   # it here as a trailer so it's seen before the tag cmd. Yes,
+   # it's a grievous hack.
+   if (my $stdin = $self->{IPC_STDIN}) {
+       $cmd .= "\n" . $stdin;
+   }
 
-   # Read back lines from stdout and stderr pipes and push them
-   # onto the appropriate arrays.
-   my $line;
-   push(@{$self->{_STDOUT}}, $line)
-	 while $line = child_get_stdout_perl(${$self->{_CHILD}});
-   push(@{$self->{_STDERR}}, $line)
-	 while $line = child_get_stderr_perl(${$self->{_CHILD}});
+   # Send cmd, get back stdout/stderr in the IPC_STD(OUT|ERR) arrays.
+   $self->_puts($cmd);
+
+   # This is a one-time-use hack, if present. Delete it here in
+   # case _puts() (or an @ISA variant thereof) needs to reference it.
+   delete $self->{IPC_STDIN};
 
    # This line should be self-documenting ... well, ok, we're
    # passing references to the stdout and stderr arrays into the
    # currently-registered discriminator function. The return value
    # is the number of errors it determined by examining
    # the output. Typically the discriminator only cares about the
-   # stderr stream but we pass it stdout also in case it matters.
-   my $errcnt = int &{$self->{_ERRCHK}}(\@{$self->{_STDERR}},
-					   \@{$self->{_STDOUT}});
+   # stderr stream but we pass it stdout also in case it cares.
+   $self->{IPC_STATUS} = int &{$self->{IPC_ERRCHK}}(\@{$self->{IPC_STDERR}},
+					   \@{$self->{IPC_STDOUT}});
 
    # Now return different things depending on the context this
    # method was used in - see comment above for details.
    if (wantarray) {
       my $r_results = {
-	 'stdout' => $self->{_STDOUT},
-	 'stderr' => $self->{_STDERR},
-	 'status' => $errcnt,
+	 'stdout' => $self->{IPC_STDOUT},
+	 'stderr' => $self->{IPC_STDERR},
+	 'status' => $self->{IPC_STATUS},
       };
-      $self->{_STDOUT} = [];
-      $self->{_STDERR} = [];
+      $self->{IPC_STDOUT} = [];
+      $self->{IPC_STDERR} = [];
       return %$r_results;
    } else {
-      $mode ||= $self->{_MODE};
+      $mode ||= $self->{IPC_MODE};
       if ($mode == NOTIFY) {
 	 $self->stderr;
       } elsif ($mode == PRINT) {
 	 $self->stdout;
 	 $self->stderr;
       } elsif ($mode == IGNORE) {
-	 $self->{_STDOUT} = [];
-	 $self->{_STDERR} = [];
+	 $self->{IPC_STDOUT} = [];
+	 $self->{IPC_STDERR} = [];
       }
-      exit $errcnt if !defined(wantarray) && $errcnt && ($mode != IGNORE);
-      return $errcnt;
+      if (!defined(wantarray) && ($mode != IGNORE) && $self->{IPC_STATUS}) {
+	  warn __FILE__ . ": exit(@{[$self->{IPC_STATUS}]}) due to void context"
+					    if $IPC::ChildSafe::Debug_Level;
+	  exit $self->{IPC_STATUS};
+      }
+      return $self->{IPC_STATUS};
    }
 }
 
-# Backward compatibility. Undocumented.
-*command = *cmd;
-
-# Auto-generate methods to set the output-handling mode.
-for my $mode (qw(NOTIFY STORE PRINT IGNORE)) {
-   my $method = lc $mode;
-   no strict 'refs';
-   *$method = sub { $_[0]->{_MODE} = &$mode };
+sub stdin {
+    my $self = shift;
+    $self->{IPC_STDIN} = "@_" if @_;
+    return $self->{IPC_STDIN};
 }
 
+########################################################################
+# Auto-generate methods to set the output-handling mode.
+########################################################################
+for my $mode (qw(NOTIFY STORE PRINT IGNORE)) {
+   my $meth = lc $mode;
+   no strict 'refs';
+   *$meth = sub { $_[0]->{IPC_MODE} = (defined($_[1]) && !$_[1]) ? 0 : &$mode };
+}
+
+########################################################################
+# Documented in PODs below.
+########################################################################
 sub status {
    my $self = shift;
-   return int &{$self->{_ERRCHK}}(\@{$self->{_STDERR}},
-				  \@{$self->{_STDOUT}});
+   return int &{$self->{IPC_ERRCHK}}(\@{$self->{IPC_STDERR}},
+				  \@{$self->{IPC_STDOUT}});
 }
 
+########################################################################
+# Documented in PODs below.
+########################################################################
 sub stdout {
    my $self = shift;
-   return 0 unless $self->{_STDOUT};
+   return 0 unless $self->{IPC_STDOUT};
    if (wantarray) {
-      my @out = @{$self->{_STDOUT}};
-      $self->{_STDOUT} = [];
+      my @out = @{$self->{IPC_STDOUT}};
+      $self->{IPC_STDOUT} = [];
       return @out;
    } elsif (defined(wantarray)) {
-      return @{$self->{_STDOUT}};
+      return @{$self->{IPC_STDOUT}};
    } else {
-      print STDOUT @{$self->{_STDOUT}};
-      $self->{_STDOUT} = [];
-   }
-}
-
-sub stderr {
-   my $self = shift;
-   return 0 unless $self->{_STDERR};
-   if (wantarray) {
-      my @errs = @{$self->{_STDERR}};
-      $self->{_STDERR} = [];
-      return @errs;
-   } elsif (defined(wantarray)) {
-      return @{$self->{_STDERR}};
-   } else {
-      print STDERR @{$self->{_STDERR}};
-      $self->{_STDERR} = [];
+      print STDOUT @{$self->{IPC_STDOUT}};
+      $self->{IPC_STDOUT} = [];
    }
 }
 
 ########################################################################
-# This function takes a reference to an error-checking subroutine and
+# Documented in PODs below.
+########################################################################
+sub stderr {
+   my $self = shift;
+   return 0 unless $self->{IPC_STDERR};
+   if (wantarray) {
+      my @errs = @{$self->{IPC_STDERR}};
+      $self->{IPC_STDERR} = [];
+      return @errs;
+   } elsif (defined(wantarray)) {
+      return @{$self->{IPC_STDERR}};
+   } else {
+      print STDERR @{$self->{IPC_STDERR}};
+      $self->{IPC_STDERR} = [];
+   }
+}
+
+########################################################################
+# This method takes a reference to an error-checking subroutine and
 # registers it to handle subsequent stderr output. It returns a
 # reference to the superseded discriminator function.
-## Note - this has never actually been tested, I just put it here in
-## case it's needed someday ....
 ########################################################################
 sub errchk {
    my $self = shift;
-   my $old_errchk = $self->{_ERRCHK};
-   $self->{_ERRCHK} = shift if @_;
+   my $old_errchk = $self->{IPC_ERRCHK};
+   $self->{IPC_ERRCHK} = shift if @_;
    return $old_errchk;
 }
 
+########################################################################
+# Shut down the child process and report its exit status.
+########################################################################
 sub finish {
    my $self = shift;
-   child_close(${$self->{_CHILD}});
-   undef $self->{_CHILD};
+   my $status = child_close(${$self->{IPC_CHILD}});
+   undef $self->{IPC_CHILD};
+   return $status;
 }
 
+########################################################################
+# Destructor - causes child process to be stopped when the last
+# reference to its associated object goes away.
+########################################################################
 sub DESTROY {
    my $self = shift;
-   $self->finish if $self->{_CHILD};
+   $self->finish if $self->{IPC_CHILD};
 }
 
 ########################################################################
@@ -240,8 +299,56 @@ sub dbglevel {
    }
 }
 
-# Backward compatibility.
-*debug = *dbglevel;
+#   This is undocumented but such a horrible hack that it needs a comment.
+# Win32::OLE seems to want to return its output in scalar form in some
+# situations. So when using COM we have to split that scalar back into a
+# list as required. Since we're certainly on Windows we can assume \cM\cJ
+# as the line separator, but there's some awful stuff which has
+# to be done to deal with trailing blank lines.
+#   It may be that Win32::OLE would do the right thing when data is
+# returned to a collection object and that may be the better thing to do.
+# Haven't had a chance to try it yet.
+#   The hack doesn't belong here - this module doesn't even KNOW about
+# Win32::OLE or COM. However, at least two subclasses are known to need
+# it so it's kept here to avoid having multiple copies.
+if ($^O =~ /win32/i) {
+    sub _fixup_COM_scalars {
+	my($self, $line) = @_;
+	return undef if !defined $line;
+	$line =~ s%\cM\cJ$%%s;
+	my @lines = map {"$_\n"} split(m%\cM\cJ%, $line, -1);
+	if ($self->{IPC_CHILD_REV}) {
+	    return reverse @lines;	# hack for bug in 3.2.1 CmdExec
+	} else {
+	    return @lines;
+	}
+    }
+
+    # Another awful hack. In CC 3.2.1, the CAL CmdExec method was present
+    # but had a bug: the output came out in backwards order. In order
+    # to support 3.2.1, we provide this class method. If the user
+    # calls it, it will determine whether we need to reverse output.
+    sub cc_321_hack {
+	my $self = shift;
+	eval { require Win32::Registry };
+	if ($@) {
+	    print $@;
+	    return undef;
+	}
+	Win32::Registry->import;
+	my($tree, %data, $major);
+	my $atria = 'SOFTWARE\Atria\ClearCase\CurrentVersion';
+	return undef if !defined($::HKEY_LOCAL_MACHINE) ||
+	    !$::HKEY_LOCAL_MACHINE->Open($atria, $tree);
+	$tree->GetValues(\%data);
+	$tree->Close;
+	$major = (split(/\./, $data{ClearCaseMajorVersion}->[2]))[0];
+	$self->{IPC_CHILD_REV} = ($major < 4) ? 1 : 0;
+	warn "Warning: the 'cc_321_hack' is unnecessary in CC 4.0!\n"
+						if !$self->{IPC_CHILD_REV};
+	return $self->{IPC_CHILD_REV};
+    };
+}
 
 1;
 
@@ -445,6 +552,10 @@ Ends the child process and returns its final exit status.
 =head1 AUTHOR
 
 David Boyce dsb@world.std.com
+
+Copyright (c) 1997-1999 David Boyce. All rights reserved. This perl
+program is free software; you may redistribute it and/or modify it
+under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
