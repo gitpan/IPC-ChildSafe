@@ -1,0 +1,6 @@
+Revision history for Perl extension IPC::ClearTool.
+
+1.00  Mon May  4 15:09:16 1998
+	- A trivial subclass of IPC::ChildSafe->new()
+	which simply defaults its arguments to those
+	which make it work with 'cleartool'.

@@ -1,0 +1,51 @@
+<HTML>
+<HEAD>
+<TITLE>
+ChildSafe_wrap.c</TITLE>
+<BODY BGCOLOR="#ffffff">
+<H1>ChildSafe_wrap.c</H1>
+[ Module  : ChildSafe, Package : IPC::ChildSafe ]<BR>
+
+<P><TT><B>child_open(char *,char *,char *);</B></TT>
+<BLOCKQUOTE>[ returns CHILD * ]
+<BR>   Open (start) a child   
+</BLOCKQUOTE>
+
+<P><TT><B>child_puts(char *,CHILD *);</B></TT>
+<BLOCKQUOTE>[ returns int  ]
+<BR>   Send a command to the child   
+</BLOCKQUOTE>
+
+<P><TT><B>child_get_stdout_perl(CHILD *);</B></TT>
+<BLOCKQUOTE>[ returns char * ]
+<BR>   Read back a line of output   
+</BLOCKQUOTE>
+
+<P><TT><B>child_get_stderr_perl(CHILD *);</B></TT>
+<BLOCKQUOTE>[ returns char * ]
+<BR>   Read a line of stderr output   
+</BLOCKQUOTE>
+
+<P><TT><B>child_close(CHILD *);</B></TT>
+<BLOCKQUOTE>[ returns int  ]
+<BR>   Close (end) the child   
+</BLOCKQUOTE>
+
+<P><TT><B>child_kill(CHILD *,int );</B></TT>
+<BLOCKQUOTE>[ returns int  ]
+<BR>   Send a signal to the child process   
+</BLOCKQUOTE>
+
+<P><TT><B>$Debug_Level</B></TT>
+<BLOCKQUOTE>[ Global : int  Debug_Level ]
+<BR>   For tracing parent/child communication   
+</BLOCKQUOTE>
+
+<P><TT><B>$Alarm_Wait</B></TT>
+<BLOCKQUOTE>[ Global : int  Alarm_Wait ]
+<BR>   Period to allow blocking before poll of stderr   
+</BLOCKQUOTE>
+
+
+</BODY>
+</HTML>

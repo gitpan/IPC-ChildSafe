@@ -1,0 +1,27 @@
+=>  My earlier (proprietary) implementation of a similar design
+included a set of "raw interfaces".  In this case "raw" means you give
+away the determinism feature which is the prime reason for this package
+and fall back to the basic techniques offered by e.g. IPC::Open2.  In
+other words you have to know exactly how much output the command is
+going to return.
+
+   The reason for these raw interfaces is that, unfortunately, some
+commands need to read from stdin.  Consider, for instance, sending a
+"checkin" command to cleartool; it will prompt for a comment and
+look for it on stdin.  But since we sent the tag command after the
+checkin command, it would get picked up as the first line of the
+comment (and then we'd hang, expecting the return string from the tag
+command.  Interestingly, if you then hit Ctrl-C to kill the hung
+process, the parent will catch the signal and die, but the cleartool
+child will not see the signal since it's in a different process group.
+So it will simply read EOF on stdin and quit, but not before finishing
+the checkin quite successfully with the tag command as its comment!).
+
+   Anyway, this implementation has no raw interface, so it will not
+handle 'cleartool checkin' or other command which read stdin.  There
+are workarounds; obviously, you can pass the comment with a -c flag or
+in a file.  Or, you could use 'system()' to spawn a separate process
+just for the checkin command; there's no problem with that.
+
+   I may add a set of raw functions just for completeness, but not
+unless requested.

@@ -1,0 +1,179 @@
+========================================================================
+			IPC::ChildSafe
+========================================================================
+
+Copyright (c) 1997,1998 David Boyce (dsb@world.std.com). All rights
+reserved.  This program is free software; you can redistribute it
+and/or modify it under the same terms as Perl itself.
+
+DESCRIPTION
+-----------
+
+This distribution contains a C API for controlling a coprocess as well
+as a Perl module which drives the C API.  It is not necessary to use
+the Perl wrapper; the C API can be called directly from C code if you
+prefer. But generally it can be thought of as a Perl module with a C
+back end.
+
+See the pod documentation at the bottom of ChildSafe.pm for usage
+details ("perldoc IPC::ChildSafe" after installing), or look at the
+included document ChildSafe.html for a longer overview.
+
+There is also a tiny subclassed IPC::ClearTool module included in the
+package, as described below. This also has its own README and pods.
+
+LATEST VERSION
+--------------
+
+If there is a newer version of this package, it will most likely be
+found on CPAN. Or you can reach the author at dsb@world.std.com.
+
+MOTIVATION
+----------
+
+This was written to address the "deadlock problem" inherent in most
+coprocessing designs such as Perl's IPC::Open2 and IPC::Open3. These
+contain warnings such as this in their documentation:
+
+    ... additionally, this is very dangerous as you may block forever.  It
+   assumes it's going to talk to something like bc, both writing to it and
+   reading from it.  This is presumably safe because you "know" that
+   commands like bc will read a line at a time and output a line at a
+   time ...
+
+or this, from perlipc(1):
+
+   ... the problem with this is that Unix buffering is really going to
+   ruin your day ... very few Unix commands are designed to operate over
+   pipes, so this seldom works unless you yourself wrote the program on
+   the other end of the double-ended pipe.
+
+Want even more quotes (from Tom Christiansen)?
+
+   ... I strongly advise against using IPC::Open2 for almost anything, even
+   though I'm its author. UNIX buffering will just drive you up the wall.
+   You'll end up quite disappointed. It's better to use temp files as we
+   did back in the code examples in section 9 if you really want to deal
+   with an external process in which you wish to control both its input
+   and its output.
+
+   ... this approach won't work because in general, you can't control your
+   child processes notions of buffering, which are entirely useless for
+   simulating interactive work as you're attempting here. The only
+   programs this works on are ones that are designed for it, like dc.
+   There aren't many system programs like it.
+
+The basic problem is this: once you've sent a command to a child
+process, how can you know  - synchronously - when the output resulting
+from this command has finished? If you do blocking reads from the child
+and make the mistake of issuing one too many, you'll block forever. If
+you do non-blocking reads you will not hang but you'll never be sure
+you've gotten all the output. The traditional solution is to let the
+child die after each command; the read will unblock and return EOF when
+the command is done and the child dies, but it's this inefficiency (a
+fork/exec for every command) that we're trying to get around.
+
+This implementation solves the problem, at least for a subset of
+possible child programs, by using a little trick:  it sends a 2nd
+(trivial) command down the pipe right in back of every real command.
+When we see the the output of this special command in the return pipe,
+we know the real command is done. See the included file ChildSafe.html for
+a detailed overview of the design.
+
+The other value IPC::ChildSafe adds over simpler packages such as
+Open2/Open3 is that it allows you to register a "discriminator
+function".  This typically would apply a regular expression to any
+output emerging from the stderr pipe (and optionally the stdout pipe)
+and return a derived "exit status".  For instance, if the child program
+is well enough written that all error messages match the pattern
+/Error:/, then the discriminator can simply grep for this in the stderr
+pipe and return the number of times it occurs for each command. Thus,
+although a real exit status cannot be determined (after all, the child
+hasn't exited), we can generally come up with a regexp to fake it
+reliably.
+
+I originally wrote this to control a program called cleartool, which is
+part of a product called ClearCase (http://www.rational.com).  But
+while it's known to be useful with cleartool, there are presumably
+other applications which could work in this mode as well. Thus, all
+presumptions about cleartool have been abstracted into a tiny
+subclassed module called IPC::ClearTool. IPC::ChildSafe should work
+with any command-line application which fits this definition of
+well-behaved:  reads stdin, writes stdout, sends errors to stderr, and
+has a trivial command with a reliable output string.
+
+DESIGN
+------
+
+It may be possible to solve the same basic problem using the new
+Expect.pm Perl module (or Expect itself), or to code something up
+directly in Perl, perhaps on top of IPC::Open3.  I chose to do it in C
+with a Perl interface because I needed both API's.
+
+I'm sure this algorithm could also be written in pure Perl; it would
+have a slightly higher startup overhead but probably not much. As noted,
+I needed the C interface too.
+
+INSTALLING
+----------
+
+Installation consists of the usual sequence of commands:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+TESTED PLATFORMS
+----------------
+
+The bulk of my testing has been on Solaris 2.5.1 and Perl 5.004_04.
+The C code has also been tested briefly on SGI IRIX 5.3 and AIX 4.2
+systems.  The Perl module requires Perl 5.004 or above, due to
+dependence on wantarray() semantics which were added in that release.
+There are presumably other dependencies on 5.004.
+
+I have not attempted to use this on Windows NT.  I'm sure the Perl code
+would be easy to port, and SWIG is reputed to work with NT.  I really
+don't know how similar the semantics of pipes, stdio, etc. are on NT so
+the C code is a mystery, and of course fork() is always problematical
+on NT.  I assume it's at least portable to NT given that many far more
+ambitious packages are ported.
+
+SWIG
+----
+
+The Perl-C wrappers included here were generated with SWIG1.1p3.  If
+you need to regenerate them for any reason, take a look at ChildSafe.i
+which has instructions at the top. These involve working around a
+couple of SWIG bugs/flaws, though of course they might be fixed in
+a later version.
+
+
+COMPILATION
+-----------
+
+The C code has been built standalone on a number of platforms with a
+number of compilers and thus is pretty standardly portable.  As a Perl
+module, with the SWIG stubs, it should be built with the same compiler
+you built perl with according to "perl -V". In my case this has been
+gcc, so if all else fails for gcc with "perl Makefile.PL CC=gcc".
+
+TESTING
+-------
+
+The 'make test' step runs a small smoke-test on the Perl module, of
+course, but you can also do simpler tests (taking Perl out of the
+equation) by building the two sample C programs kshdemo.c and ccdemo.c
+in ./examples.  The ccdemo.c program will not work unless you have
+ClearCase. Thus the simplest of the tests is kshdemo.c, so I recommend
+you not continue until that one works.
+
+FEEDBACK
+--------
+
+This is my first attempt at packaging up a Perl module for public
+consumption, so feel free to provide feedback on any rough edges you
+find.  Also, if you port this to other platforms (especially Windows)
+or enhance it significantly, you have at least a moral obligation to
+send those changes back to me at the above address. TIA.

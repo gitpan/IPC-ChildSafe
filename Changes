@@ -1,0 +1,57 @@
+Revision history for Perl extension IPC::ChildSafe.
+
+0.01  Sat Nov 29 12:03:06 1997
+	- Original version; created by h2xs 1.18
+
+1.01  Mon Dec 01 22:23:14 1997
+	- First release. There are a few bells and whistles I would
+	like to add yet, but this version seems stable.  Might as well
+	get feedback before implementing the b&w.
+
+2.00  Mon Mar 09 22:23:14 1998
+	- Reworked the entire perl interface using one 'smart' method
+	$obj->command.  This detects whether it was run in a scalar or list
+	context and either dumps all output to true stdout/stderr and
+	returns the exit status (scalar case) or returns it all plus the
+	exit status in a hash (list case).
+
+	Added a function for registering an error-checking routine.
+	This allows the user to set up their preferred regular expression
+	(or other algorithm) for determining which output constitutes
+	an error condition.
+
+2.02  Sat Apr 11 15:23:14 1998
+	- Added a third mode to the $obj->command method;
+	if called in a void context it now will exit on failure.
+
+	- As a result of the above improvement, moved the required
+	perl version up to 5.004 since the wantarray() feature
+	which enables it was added only in 5.004.
+
+2.10  Sun Apr 26 15:23:14 1998
+	- Renamed to IPC::ChildSafe as a result of discussions
+	on modules@perl.org.
+
+	- Reworked to use a hash to represent the object.  This allowed
+	a rethinking of how $obj->command behaves in scalar context. Now,
+	when used in scalar it will store all generated output in arrays
+	_STDOUT and _STDERR.  This data can be retrieved later using the
+	new methods 'stdout' and 'stderr'.
+
+	- Added a related feature; when $obj->command() is called in a
+	void context and with no arguments, it flushes (throws away) the
+	stored results.
+
+2.20  Sun May 10 17:43:44 1998
+	- Added the ability to handle stderr differently via
+	$obj->command("cmd" => IGNORE) etc.
+
+	- Added $obj->status method to poll the currently-stored
+	stderr for an error count.
+
+	- Moved ClearCase-specific comments out to subclassed
+	IPC::ClearTool module.
+
+2.25  Sun May 17 12:34:46 1998
+	- Renamed $obj->command() to $obj->cmd() for brevity.
+	Left old method in place but de-documented.

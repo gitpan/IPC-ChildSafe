@@ -1,0 +1,48 @@
+========================================================================
+			IPC::ClearTool
+========================================================================
+
+Copyright (c) 1998 David Boyce (dsb@world.std.com). All rights
+reserved.  This program is free software; you can redistribute it
+and/or modify it under the same terms as Perl itself.
+
+DESCRIPTION
+-----------
+
+This is really a trivial subclass of IPC::ChildSafe.  While I
+originally wrote ChildSafe to work with cleartool, I wanted to design
+it in an open manner which didn't preclude use with other utilities.
+But this had the effect of making it slightly harder and more
+mysterious to use it with cleartool, since the user had to pass the
+magic 'tag' and 'eot' strings and perhaps modify the error
+discriminator. So I ended up making this module, which simply provides
+a new contructor method with the correct defaults for cleartool,
+and inherits everything else from ChildSafe.
+
+This module is of no value unless you have ClearCase installed, and in
+fact the tests will fail if you don't. And even if you have ClearCase
+you may still prefer to use IPC::ChildSafe directly.
+
+See the documentation for IPC::ChildSafe for further details.
+
+LATEST VERSION
+--------------
+
+This module is only available bundled with IPC::ChildSafe.  If there is
+a newer version of that, it will most likely be found on CPAN.  Or you
+can reach the author at dsb@world.std.com.
+
+INSTALLING
+----------
+
+Installation consists of the usual sequence of commands:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+TESTED PLATFORMS
+----------------
+
+This will work an any platform where IPC::ChildSafe works.
