@@ -76,3 +76,8 @@ Revision history for Perl extension IPC::ChildSafe.
 	  assumption which for whatever reason was always true on
 	  Solaris but never true on Linux. Now I do the right thing.
 	- Made some minor documentation improvements.
+
+2.31 Sat Oct  2 23:18:28 EDT 1999
+	- Added a 'mode' attribute as a cleaner way than
+	  $obj->cmd(command => mode).
+	- Improved docs and removed redundant comments.

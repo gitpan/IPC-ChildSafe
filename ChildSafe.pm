@@ -13,15 +13,16 @@ use constant	IGNORE => 3;	# throw away all output, ignore retcode
 
 @EXPORT_OK = qw(NOTIFY STORE PRINT IGNORE);
 
-# SWIG-generated code.
 require Exporter;
 require DynaLoader;
 @ISA = qw(Exporter DynaLoader);
+
+# SWIG-generated XS code.
 bootstrap IPC::ChildSafe;
 var_ChildSafe_init();
 
 # The current version and a way to access it.
-$VERSION = "2.30"; sub version {$VERSION}
+$VERSION = "2.31"; sub version {$VERSION}
 
 ########################################################################
 # Just a thin layer over child_open (see child.c). Optional last
@@ -29,16 +30,22 @@ $VERSION = "2.30"; sub version {$VERSION}
 # whether it constitutes an error.  If no REF CODE is supplied for $chk,
 # we use a default internal subroutine.
 ########################################################################
-sub new
-{
+sub new {
    my $proto = shift;
    my $class = ref($proto) || $proto;
-   my($cmd, $tag, $ret, $chk) = @_;
+   my($cmd, $tag, $ret, $mode, $chk) = @_;
+
+   # Hack for compatibility with <= 2.30
+   if ($mode && ref($mode)) {
+      $chk = $mode;
+      undef $mode;
+   }
 
    # Initialize the hash which will represent this object.
    my $self  = {
       _CHILD	=> undef,
       _ERRCHK	=> undef,
+      _MODE	=> $mode || NOTIFY,
       _STDOUT	=> undef,
       _STDERR	=> undef,
    };
@@ -61,24 +68,8 @@ sub new
    return $self;
 }
 
-########################################################################
-# Send specified command to child process. Return behavior varies
-# with context:
-#   Array context: returns a hash containing an array of stdout
-#     results (key: 'stdout'), an array of stderr messages ('stderr),
-#     and the "return code" of the command ('status').
-#   Scalar context: returns command's "return code", stores stdout
-#     in object for later access via method 'stdout'. By default,
-#     sends stderr results directly to parent's stderr but if '=> STORE'
-#     is passed, stderr is stored just like stdout. With '=> IGNORE',
-#     throws away both stdout and stderr.
-#   Void context: similar to scalar mode but exits on nonzero return
-#     code unless '=> IGNORE' is passed.
-#   Void context and no args: throw away all stored results.
-########################################################################
-sub cmd
-{
-   my($self) = shift;
+sub cmd {
+   my $self = shift;
    my($cmd, $mode, @junk) = @_;
 
    croak "extraneous data '@junk' follows command" if @junk;
@@ -123,7 +114,8 @@ sub cmd
       $self->{_STDERR} = [];
       return %$r_results;
    } else {
-      if (!defined($mode) || $mode == NOTIFY) {
+      $mode ||= $self->{_MODE};
+      if ($mode == NOTIFY) {
 	 $self->stderr;
       } elsif ($mode == PRINT) {
 	 $self->stdout;
@@ -140,32 +132,24 @@ sub cmd
    }
 }
 
-# Temporary backward compatibility. Undocumented.
+# Backward compatibility. Undocumented.
 sub command { cmd(@_); }
 
-########################################################################
-# Pass the current stdout and stderr arrays to the currently-registered
-# error discriminator and return its results (aka the error count).
-########################################################################
-sub status
-{
+# Auto-generate methods to set the output-handling mode.
+for my $mode (qw(NOTIFY STORE PRINT IGNORE)) {
+   my $method = lc $mode;
+   no strict 'refs';
+   *$method = sub { $_[0]->{_MODE} = &$mode };
+}
+
+sub status {
    my $self = shift;
    return int &{$self->{_ERRCHK}}(\@{$self->{_STDERR}},
 				  \@{$self->{_STDOUT}});
 }
 
-########################################################################
-# Return stored output from previous command(s). Return behavior
-# varies with context:
-#   Array context: shifts all stored lines off the stdout stack and 
-#     returns them in a list.
-#   Scalar context: returns the number of lines currently stored in
-#     the stdout stack.
-#   Void context: prints the current stdout stack to actual stdout.
-########################################################################
-sub stdout
-{
-   my($self) = shift;
+sub stdout {
+   my $self = shift;
    return 0 unless $self->{_STDOUT};
    if (wantarray) {
       my @out = @{$self->{_STDOUT}};
@@ -179,12 +163,8 @@ sub stdout
    }
 }
 
-########################################################################
-# Similar to 'stdout' method above.
-########################################################################
-sub stderr
-{
-   my($self) = shift;
+sub stderr {
+   my $self = shift;
    return 0 unless $self->{_STDERR};
    if (wantarray) {
       my @errs = @{$self->{_STDERR}};
@@ -205,20 +185,15 @@ sub stderr
 ## Note - this has never actually been tested, I just put it here in
 ## case it's needed someday ...
 ########################################################################
-sub errchk
-{
-   my($self) = shift;
+sub errchk {
+   my $self = shift;
    my $old_errchk = $self->{_ERRCHK};
-   $self->{_ERRCHK} = shift;
+   $self->{_ERRCHK} = shift if @_;
    return $old_errchk;
 }
 
-########################################################################
-# Ends the child process and returns its exit status.
-########################################################################
-sub finish
-{
-   my($self) = shift;
+sub finish {
+   my $self = shift;
    child_close(${$self->{_CHILD}});
 }
 
@@ -231,10 +206,10 @@ sub finish
 #   4 == all meta-data exchanged by parent and child: tag, ret, polling, etc.
 # Other debug levels are unassigned and available for user definition.
 ## With no args, this method toggles state between no-debug and max-debug.
+### Debug_Level is resident in the C code.
 ########################################################################
-sub debug
-{
-   my($self) = shift;
+sub debug {
+   my $self = shift;
    if (@_) {
       $IPC::ChildSafe::Debug_Level = shift;
    } else {
@@ -243,6 +218,7 @@ sub debug
 }
 
 1;
+
 __END__
 
 =head1 NAME
@@ -329,15 +305,17 @@ we know the real command is done.
 
 =head1 CONSTRUCTOR
 
-The constructor takes 3 arguments plus an optional 4th: the 1st is the
-program to run, the 2nd is a command to that program which produces a
-unique one-line output, the 3rd is that unique output, and the 4th is a
-code ref for a discriminator function. If no discriminator is supplied
-then a standard internal one is used.
+The constructor takes 3 arguments plus an optional 4th and 5th: the 1st
+is the program to run, the 2nd is a command to that program which
+produces a unique one-line output, and the 3rd is that unique output.
+If a 4th arg is supplied it becomes the mode in which this object will
+run (default: NOTIFY), and if a 5th is given it must be a ref code,
+which will be registered as the error discriminator.  If no
+discriminator is supplied then a standard internal one is used.
 
-The 2nd arg is called the "tag command"; preferably this would be
+The 2nd arg is called the "tag command". Preferably this would be
 something lightweight, e.g. a shell builtin. Unfortunately the current
-version has no support for a multi-line return value since this would
+version has no support for a multi-line return value since it would
 require some fairly complex buffering.
 
 The discriminator function is invoked after each command completes, and
@@ -363,6 +341,11 @@ the string "warning:".
 
 =over 4
 
+=item * B<notify/store/print/ignore>
+
+Sets the output-handling mode. The meanings of these are described
+below.
+
 =item * B<cmd>
 
 Send specified command to child process. Return behavior varies
@@ -378,26 +361,28 @@ command ('status').
 
 =item scalar context
 
-returns command's "return code", stores stdout in object for later
-access via method 'stdout'. By default, sends stderr results directly
-to parent's stderr but if '=> STORE' is passed, stderr is stored just
-like stdout. With '=> IGNORE', throws away both stdout and stderr.
+returns command's "return code".  In the default mode (NOTIFY), sends
+stderr results directly to parent's stderr while storing stdout in the
+object for later retrieval via I<stdout> method. In PRINT mode both
+stdout and stderr are sent directly to the "real" (parent's)
+stdout/stderr. STORE mode causes both stdout and stderr to be stored
+for later use, while IGNORE mode throws away both.
 
 =item void context
 
-similar to scalar mode but exits on nonzero return code unless '=>
-IGNORE' is passed.
+similar to scalar mode but exits on nonzero return code unless in
+IGNORE mode.
 
 =item void context and no args
 
-throw away all stored results.
+clears the stdout and stderr buffers
 
 =back
 
 =item * B<stdout>
 
-Return stored output from previous command(s). Return behavior
-varies with context:
+Return stored output from previous command(s). Behavior varies with
+context:
 
 =over 4
 
@@ -417,14 +402,14 @@ prints the current stdout stack to actual stdout.
 
 =item * B<stderr>
 
-Similar to C<stdout> method above. But note that by default stderr does
+Similar to C<stdout> method above. Note that by default stderr does
 not go to the accumulator, but rather to the parent's stderr.  Set the
 STORE attribute to leave stderr in the accumulator instead where this
 method can operate on it.
 
 =item * B<status>
 
-Pass the current stdout and stderr arrays to the currently-registered
+Pass the current stdout and stderr buffers to the currently-registered
 error discriminator and return its results (aka the error count).
 
 =item * B<finish>
