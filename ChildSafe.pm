@@ -6,7 +6,7 @@ use Carp;
 require Exporter;
 require DynaLoader;
 
-$VERSION = '3.15';
+$VERSION = '3.16';
 # Exports are retained mostly for backward compatibility. Modern uses should
 # (generally) employ the methods of the same name, e.g. $obj->store(1);
 @EXPORT_OK = qw(NOTIFY STORE PRINT IGNORE);
@@ -581,7 +581,7 @@ be printed with a leading '-'.
 
 =head1 AUTHOR
 
-David Boyce dsb@boyski.com
+David Boyce dsbperl@cleartool.com
 
 Copyright (c) 1997-2001 David Boyce. All rights reserved. This perl
 program is free software; you may redistribute it and/or modify it

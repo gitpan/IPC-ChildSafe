@@ -15,3 +15,6 @@ Revision history for Perl extension IPC::ClearTool.
 
 3.15 Fri Feb 14 12:18:17 EST 2003
 	- Fixed a bug in ->chdir on Windows which broke the ClearTool.t test
+
+3.16 Tue Aug  5 22:52:04 EDT 2003
+	- Fixed author's email address.

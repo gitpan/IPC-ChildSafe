@@ -15,7 +15,7 @@ use IPC::ChildSafe 3.15;
 @ISA = q(IPC::ChildSafe);
 
 # The current version and a way to access it.
-$VERSION = "3.15"; sub version {$VERSION}
+$VERSION = "3.16"; sub version {$VERSION}
 
 sub new {
     my $proto = shift;
@@ -262,7 +262,7 @@ lines and return the list.
 
 =head1 AUTHOR
 
-David Boyce dsb@boyski.com
+David Boyce dsbperl@cleartool.com
 
 Copyright (c) 1997-2002 David Boyce. All rights reserved. This perl
 program is free software; you may redistribute it and/or modify it

@@ -11,7 +11,7 @@
 
 /**
  ****************************************************************************
- ** Copyright (c) 1997-2001 David Boyce (dsb@boyski.com).
+ ** Copyright (c) 1997-2001 David Boyce (dsbperl@cleartool.com).
  ** All rights reserved.
  ** This program is free software; you can redistribute it and/or
  ** modify it under the same terms as Perl.
