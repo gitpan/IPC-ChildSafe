@@ -6,7 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "child.h"
+#include "childsafe.h"
 
 /**
  ****************************************************************************

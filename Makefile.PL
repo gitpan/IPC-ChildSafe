@@ -3,7 +3,7 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 WriteMakefile(
     'NAME'	=> 'IPC::ChildSafe',
-    'OBJECT'  	=> 'child.o ChildSafe_wrap.o',
+    'OBJECT'  	=> 'childsafe.o ChildSafe_wrap.o',
     'VERSION_FROM' => 'ChildSafe.pm', # finds $VERSION
     'dist' => { SUFFIX => ".gz", DIST_DEFAULT => 'all tardist',
     'COMPRESS' => "gzip -f" },

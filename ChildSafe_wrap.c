@@ -76,7 +76,7 @@ extern "C" {
 
 
 /*****************************************************************************
- * $Header: /home/beazley/SWIG/SWIG1.1b3/swig_lib/perl5/RCS/perl5ptr.swg,v 1.1 1996/12/26 22:17:29 beazley Exp beazley $
+ * $Header: /vobs_fw/ChildSafe/ChildSafe_wrap.c /main/2 17-Nov-1999 14:55:24 dsb $
  *
  * perl5ptr.swg
  *
@@ -109,7 +109,7 @@ extern "C" {
  * can be used in a multi-module environment by redefining the symbol
  * SWIGSTATIC.
  *
- * $Log: perl5ptr.swg,v $
+ * $Log:  $
  * Revision 1.1  1996/12/26 22:17:29  beazley
  * Initial revision
  *
@@ -442,7 +442,7 @@ SWIGEXPORT(void,boot_IPC__ChildSafe)(CV* cv);
 SWIGEXPORT(void,boot_IPC__ChildSafe)(CPerl *, CV *cv);
 #endif
 
-#include "child.h"
+#include "childsafe.h"
 #ifdef PERL_OBJECT
 #define MAGIC_CLASS _wrap_ChildSafe_var::
 class _wrap_ChildSafe_var : public CPerl {

@@ -1,5 +1,35 @@
 package IPC::ClearTool;
 
+use strict;
+use vars qw($VERSION @ISA @EXPORT_OK %EXPORT_TAGS);
+
+use IPC::ChildSafe;
+@EXPORT_OK = @IPC::ChildSafe::EXPORT_OK;
+%EXPORT_TAGS = ( BehaviorMod => \@EXPORT_OK );
+
+@ISA = qw(IPC::ChildSafe);
+
+# The current version and a way to access it.
+$VERSION = "1.10"; sub version {$VERSION}
+
+sub new
+{
+   my $proto = shift;
+   my $class = ref($proto) || $proto;
+   my $ct = join('/', $ENV{ATRIAHOME} || '/usr/atria', 'bin/cleartool');
+   my $chk = sub {
+      my($r_stderr, $r_stdout) = @_;
+      return int grep /Error:\s/, @$r_stderr;
+   };
+   my $self = $class->SUPER::new ($ct, 'pwd -h', 'Usage: pwd', $chk);
+   bless ($self, $class);
+   return $self;
+}
+
+1;
+
+__END__
+
 =head1 NAME
 
 IPC::ClearTool, ClearTool - run a bidirectional pipe to a cleartool process
@@ -17,18 +47,18 @@ IPC::ClearTool, ClearTool - run a bidirectional pipe to a cleartool process
 
 =head1 ALTERNATE SYNOPSES
 
-  # Importing behavior-modification keywords ...
-  use IPC::ClearTool qw(STORE IGNORE NOTIFY); # or qw(:BehaviorMod);
+  use IPC::ClearTool;
 
   $rc = $CT->cmd("pwv");		# Assign return code to $rc
 
-  $rc = $CT->cmd("pwv" => NOTIFY);	# NOTIFY is default; same as above
+  $CT->notify;
+  $rc = $CT->cmd("pwv");		# NOTIFY is default; same as above
 
-  $rc = $CT->cmd("pwv" => STORE);	# Store any stderr for later
-					# retrieval via $CT->stderr
+  $CT->store;				# "Store mode" - save stderr for
+  $rc = $CT->cmd("pwv");		# later retrieval via $CT->stderr
 
-  $CT->cmd("pwv" => IGNORE);		# Discard all stdout/stderr and
-					# ignore nonzero return codes
+  $CT->ignore;				# Discard all stdout/stderr and
+  $CT->cmd("pwv" => IGNORE);		# ignore nonzero return codes
 
   $CT->cmd("ls foo@@");			# In void context, store stdout,
 					# print stderr immediately,
@@ -90,33 +120,3 @@ David Boyce dsb@world.std.com
 perl(1), "perldoc IPC::ChildSafe"
 
 =cut
-
-use IPC::ChildSafe qw(NOTIFY STORE IGNORE);
-@EXPORT_OK = qw(NOTIFY STORE IGNORE);
-%EXPORT_TAGS = ( BehaviorMod => [qw(NOTIFY STORE IGNORE)] );
-
-use strict;
-use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
-
-@ISA = qw(IPC::ChildSafe);
-
-# The current version and a way to access it.
-$VERSION = "1.00"; sub version {$VERSION}
-
-sub new
-{
-   my $proto = shift;
-   my $class = ref($proto) || $proto;
-   my $chk = sub {
-      my($r_stderr, $r_stdout) = @_;
-      return int grep /Error:\s/, @$r_stderr;
-   };
-   my $ct = ($^O =~ /win32/i) ? '/atria/bin/cleartool.exe' :
-	 join('/', $ENV{ATRIAHOME} || '/usr/atria', 'bin/cleartool');
-   my $self = $class->SUPER::new ($ct, 'pwd -h', 'Usage: pwd', $chk);
-   bless ($self, $class);
-   return $self;
-}
-
-1;
-__END__

@@ -81,3 +81,9 @@ Revision history for Perl extension IPC::ChildSafe.
 	- Added a 'mode' attribute as a cleaner way than
 	  $obj->cmd(command => mode).
 	- Improved docs and removed redundant comments.
+
+2.32 Wed Nov 17 06:14:47 EST 1999
+	- Added a DESTROY method in order to stop the coprocess
+	  when obj-ref goes out of scope.
+	- Renamed child.c to childsafe.c etc. for cosmetic reasons.
+	  (apologies to anyone inconvenienced by this!).

@@ -28,7 +28,7 @@ typedef struct
     unsigned cph_pending;
 } CHILD;
 
-/** Public C interfaces in child.c **/
+/** Public C interfaces in childsafe.c **/
 extern CHILD *child_open(char *, char *, char *);
 extern int child_puts(char *, CHILD *);
 extern char *child_gets(char *, int, CHILD *);

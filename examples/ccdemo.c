@@ -2,7 +2,7 @@
  * Demo of how to use the C interface with cleartool.
  */
 
-#include <child.h>
+#include "childsafe.h"
 
 int
 main(int argc, char *argv[])

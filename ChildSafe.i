@@ -22,7 +22,7 @@
 
 %module ChildSafe
 %{
-#include "child.h"
+#include "childsafe.h"
 %}
 
 /**

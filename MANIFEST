@@ -6,8 +6,8 @@ ChildSafe_wrap.html
 MANIFEST
 Makefile.PL
 README
-child.c
-child.h
+childsafe.c
+childsafe.h
 examples/Makefile
 examples/ccdemo.c
 examples/shdemo.c

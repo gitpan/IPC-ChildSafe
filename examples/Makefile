@@ -3,17 +3,17 @@
 CC = gcc
 CFLAGS = -I.. -g
 
-all:: libchild.a shdemo ccdemo
+all:: libchildsafe.a shdemo ccdemo
 
-child.o: ../child.h ../child.c
+childsafe.o: ../childsafe.h ../childsafe.c
 	$(CC) $(CFLAGS) -c ../$*.c
 
-libchild.a: child.o
+libchildsafe.a: childsafe.o
 	@rm -f $@
 	$(AR) r $@ $?
 
-shdemo: shdemo.o libchild.a
-	$(CC) -o shdemo shdemo.o libchild.a
+shdemo: shdemo.o libchildsafe.a
+	$(CC) -o shdemo shdemo.o libchildsafe.a
 
-ccdemo: ccdemo.o libchild.a
-	$(CC) -o ccdemo ccdemo.o libchild.a
+ccdemo: ccdemo.o libchildsafe.a
+	$(CC) -o ccdemo ccdemo.o libchildsafe.a

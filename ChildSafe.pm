@@ -3,7 +3,7 @@ package IPC::ChildSafe;
 require 5.004;
 
 use strict;
-use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
+use vars qw($VERSION @ISA @EXPORT_OK);
 use Carp;
 
 use constant	NOTIFY => 0;	# default - print stderr msgs as they arrive
@@ -11,6 +11,8 @@ use constant	STORE  => 1;	# store stderr msgs for later retrieval
 use constant	PRINT  => 2;	# send all output to screen immediately
 use constant	IGNORE => 3;	# throw away all output, ignore retcode
 
+# This is retained for backward compatibility. Modern uses should
+# employ the methods of the same name, e.g. $obj->store(1);
 @EXPORT_OK = qw(NOTIFY STORE PRINT IGNORE);
 
 require Exporter;
@@ -22,10 +24,10 @@ bootstrap IPC::ChildSafe;
 var_ChildSafe_init();
 
 # The current version and a way to access it.
-$VERSION = "2.31"; sub version {$VERSION}
+$VERSION = "2.32"; sub version {$VERSION}
 
 ########################################################################
-# Just a thin layer over child_open (see child.c). Optional last
+# Just a thin layer over child_open (see childsafe.c). Optional last
 # argument is a function to examine stderr output and determine
 # whether it constitutes an error.  If no REF CODE is supplied for $chk,
 # we use a default internal subroutine.
@@ -99,7 +101,7 @@ sub cmd {
    # is the number of errors it determined by examining
    # the output. Typically the discriminator only cares about the
    # stderr stream but we pass it stdout also in case it matters.
-   my $err_match = int &{$self->{_ERRCHK}}(\@{$self->{_STDERR}},
+   my $errcnt = int &{$self->{_ERRCHK}}(\@{$self->{_STDERR}},
 					   \@{$self->{_STDOUT}});
 
    # Now return different things depending on the context this
@@ -108,7 +110,7 @@ sub cmd {
       my $r_results = {
 	 'stdout' => $self->{_STDOUT},
 	 'stderr' => $self->{_STDERR},
-	 'status' => $err_match,
+	 'status' => $errcnt,
       };
       $self->{_STDOUT} = [];
       $self->{_STDERR} = [];
@@ -124,16 +126,13 @@ sub cmd {
 	 $self->{_STDOUT} = [];
 	 $self->{_STDERR} = [];
       }
-      if (defined(wantarray)) {
-	 return $err_match;
-      } elsif ($err_match && ($mode != IGNORE)) {
-	 exit $err_match;
-      }
+      exit $errcnt if !defined(wantarray) && $errcnt && ($mode != IGNORE);
+      return $errcnt;
    }
 }
 
 # Backward compatibility. Undocumented.
-sub command { cmd(@_); }
+*command = *cmd;
 
 # Auto-generate methods to set the output-handling mode.
 for my $mode (qw(NOTIFY STORE PRINT IGNORE)) {
@@ -183,7 +182,7 @@ sub stderr {
 # registers it to handle subsequent stderr output. It returns a
 # reference to the superseded discriminator function.
 ## Note - this has never actually been tested, I just put it here in
-## case it's needed someday ...
+## case it's needed someday ....
 ########################################################################
 sub errchk {
    my $self = shift;
@@ -195,6 +194,12 @@ sub errchk {
 sub finish {
    my $self = shift;
    child_close(${$self->{_CHILD}});
+   undef $self->{_CHILD};
+}
+
+sub DESTROY {
+   my $self = shift;
+   $self->finish if $self->{_CHILD};
 }
 
 ########################################################################
@@ -208,7 +213,7 @@ sub finish {
 ## With no args, this method toggles state between no-debug and max-debug.
 ### Debug_Level is resident in the C code.
 ########################################################################
-sub debug {
+sub dbglevel {
    my $self = shift;
    if (@_) {
       $IPC::ChildSafe::Debug_Level = shift;
@@ -216,6 +221,9 @@ sub debug {
       $IPC::ChildSafe::Debug_Level = $IPC::ChildSafe::Debug_Level ? 0 : -1>>1;
    }
 }
+
+# Backward compatibility.
+*debug = *dbglevel;
 
 1;
 
@@ -285,23 +293,19 @@ or IPC::Open2 which has this warning from its author (Tom Christansen):
    though I'm its author. UNIX buffering will just drive you up the wall.
    You'll end up quite disappointed ...
 
-   The blocking problem is this: once you've sent a command to your
-coprocess, how do you know when the output resulting from this command
-has finished?  If you guess wrong and issue one read too many you can
+The blocking problem is: once you've sent a command to your coprocess,
+how do you know when the output resulting from this command has
+finished?  If you guess wrong and issue one read too many you can
 deadlock forever.  This implementation solves the problem, at least for
-a subset of possible coprocess programs, by sending a 2nd command with
-a known output to mark the EOT from the 1st command.  Read the full
-description available in 'ChildSafe.html'.
-   This module also returns an "exit status" for each command, which is
-really a count of the error messages produced by it.  The programmer
-can optionally register his/her own "discriminator function" for
-determining which output to stderr constitutes an error message.
+a subset of possible child programs, by using a little trick:  it sends
+a 2nd (trivial) command down the pipe right in back of every real
+command.  When we see the the output of this special command in the
+return pipe, we know the real command is done.
 
-    This implementation solves the problem, at least for a subset of
-possible child programs, by using a little trick:  it sends a 2nd
-(trivial) command down the pipe right in back of every real command.
-When we see the the output of this special command in the return pipe,
-we know the real command is done.
+This module also returns an "exit status" for each command, which is
+really a count of the error messages produced by it.  The programmer
+can optionally register his/her own discriminator function for
+determining which output to stderr constitutes an error message.
 
 =head1 CONSTRUCTOR
 
@@ -309,14 +313,16 @@ The constructor takes 3 arguments plus an optional 4th and 5th: the 1st
 is the program to run, the 2nd is a command to that program which
 produces a unique one-line output, and the 3rd is that unique output.
 If a 4th arg is supplied it becomes the mode in which this object will
-run (default: NOTIFY), and if a 5th is given it must be a ref code,
-which will be registered as the error discriminator.  If no
+run (default: NOTIFY, see below), and if a 5th is given it must be a
+code ref, which will be registered as the error discriminator.  If no
 discriminator is supplied then a standard internal one is used.
 
 The 2nd arg is called the "tag command". Preferably this would be
 something lightweight, e.g. a shell builtin. Unfortunately the current
 version has no support for a multi-line return value since it would
 require some fairly complex buffering.
+
+=head1 DISCRIMINATOR
 
 The discriminator function is invoked after each command completes, and
 is passed a reference to an array containing the stderr generated by
@@ -414,7 +420,7 @@ error discriminator and return its results (aka the error count).
 
 =item * B<finish>
 
-Ends the child process and returns its exit status.
+Ends the child process and returns its final exit status.
 
 =back
 

@@ -1,4 +1,4 @@
-#include <child.h>
+#include "childsafe.h"
 
 /*
  * This is a contrived example using the sh as a coprocess. Normally the sh
