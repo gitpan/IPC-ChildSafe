@@ -188,5 +188,9 @@ Revision history for Perl extension IPC::ChildSafe.
 	  -DMULTIPLICITY perls as above, there are questions about
 	  the -DPOLLUTE code changes in 5.005 and 5.6. I've tried to
 	  code conservatively and don't KNOW of anything that would
-	  keep it from compiling/working with any version >=5.004,
+	  keep it from compiling/working with any Perl version >=5.004
 	  but have no way to test all the permutations.
+
+3.14 Thu Nov 15 13:18:53 EST 2001
+	- Improved patch from Daphne Pfister @nortelnetworks.com;
+	  previous one broke on 5.004.

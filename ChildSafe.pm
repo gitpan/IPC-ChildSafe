@@ -6,7 +6,7 @@ use Carp;
 require Exporter;
 require DynaLoader;
 
-$VERSION = '3.12';
+$VERSION = '3.14';
 # Exports are retained mostly for backward compatibility. Modern uses should
 # (generally) employ the methods of the same name, e.g. $obj->store(1);
 @EXPORT_OK = qw(NOTIFY STORE PRINT IGNORE);
@@ -29,12 +29,12 @@ use vars qw($VERSION $Debug_Level $No_Exec);
 # which rely on the XS code anyway.
 if ($^O !~ /win32|Windows_NT|cygwin/i) {
     # SWIG-generated XS code.
-    bootstrap IPC::ChildSafe $VERSION;
+    bootstrap IPC::ChildSafe $IPC::ChildSafe::VERSION;
     var_ChildSafe_init();
 }
 
 # The current version and a way to access it.
-sub version {$VERSION}
+sub version {$IPC::ChildSafe::VERSION}
 
 # This is an undocumented service method, used only by the
 # constructor. It's broken out to make it easier for the

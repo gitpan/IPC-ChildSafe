@@ -18,6 +18,14 @@
 #include "perl.h"
 #include "XSUB.h"
 
+/* Support older Perls that do not use pTHX_ and aTHX_ */
+#ifndef pTHX_
+#define pTHX_
+#endif
+#ifndef aTHX_
+#define aTHX_
+#endif
+
 /** This is analogous to a FILE handle for fopen/fgets/fputs/fclose. **/
 typedef struct
 {

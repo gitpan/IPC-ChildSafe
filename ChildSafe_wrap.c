@@ -49,6 +49,14 @@ extern "C" {
 #define PL_na na
 #endif
 
+/* Support older Perls that do not use pTHX_ and aTHX_ */
+#ifndef pTHX_
+#define pTHX_
+#endif
+#ifndef aTHX_
+#define aTHX_
+#endif
+
 /* Definitions for compiling Perl extensions on a variety of machines */
 #if defined(WIN32) || defined(__WIN32__)
 #   if defined(_MSC_VER)
