@@ -6,12 +6,11 @@ ChildSafe_wrap.html
 MANIFEST
 Makefile.PL
 README
-TODO
 child.c
 child.h
 examples/Makefile
 examples/ccdemo.c
-examples/kshdemo.c
+examples/shdemo.c
 t/ChildSafe.t
 IPC-ClearTool/Changes
 IPC-ClearTool/ClearTool.pm

@@ -177,19 +177,6 @@ _cp_poll_stderr(CHILD *handle, int show)
       else
 	 _dbg(F,L,2, "<<== (NO_SHOW) %s", line);
 
-/***
- *** HACK ALERT: The analysis of stderr output and mapping of it into
- *** return codes is a weak point of this implementation.  The best
- *** solution would be to allow a 'discrimination function' to be passed to
- *** us in the manner of qsort(3).  This would be called on each line
- *** here and would presumably apply a regular expression to it for
- *** making ok-or-error decisions.  This would allow different applications
- *** to have different error rules. However, since this is currently not
- *** implemented, we have a hack instead which depends on the fact that
- *** ClearCase is well-behaved in that all its error msgs begin with
- *** "Error: ".  This may not work as well for other applications.
- ***/
-#ifndef CLEARCASE_SPECIFIC_HACK
       /**
        ** Lines that look like warnings or shell-generated verbose output
        ** are ignored; anything we don't recognize is considered an
@@ -197,13 +184,6 @@ _cp_poll_stderr(CHILD *handle, int show)
        **/
       if ((line[0] == '+' && line[1] == ' ') || strstr(line, "arning: "))
 	 continue;
-#else
-      /**
-       ** Only stderr lines which contain "Error: " are considered errors.
-       **/
-      if (!strstr(line, "Error: "))
-	 continue;
-#endif
 
       /** Looks like an error **/
       handle->cph_errs++;
@@ -390,7 +370,7 @@ _cp_start_child(CHILD *handle)
 
 /**
  ** This is how we "seek forward" to the <RET> token if there was
- ** any unued data left in the stdout pipe. This needs to be done
+ ** any unused data left in the stdout pipe. This needs to be done
  ** to stay in sync and also to avoid any SIGPIPEs.
  **/
 static void
@@ -409,6 +389,8 @@ _cp_sync(CHILD *handle)
  * which handles both input to and output from the process. Also returns
  * another file ptr via the parameter list which can be polled for error
  * output.
+ ** We defer the actual fork/exec sequence till the first
+ ** command is sent.
  */
 CHILD *
 child_open(char *cmd, char *tag, char *eot)
@@ -574,7 +556,7 @@ child_kill(CHILD *handle, int signo)
 int
 child_close(CHILD *handle)
 {
-   int retstat;
+   int retstat = 1, done;
 
    /**
     ** This lets us close the most-recently-used coprocess gracefully without
@@ -605,8 +587,8 @@ child_close(CHILD *handle)
       return -1;
 
    /** Reap the child. **/
-   while (waitpid(handle->cph_pid, &retstat, WNOHANG) < 0)
-      if (errno != EINTR)
+   while ((done = waitpid(handle->cph_pid, &retstat, WNOHANG)) <= 0)
+      if (done < 0 && errno != EINTR)
 	 return -1;
 
    if (handle != NULL)

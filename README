@@ -2,25 +2,24 @@
 			IPC::ChildSafe
 ========================================================================
 
-Copyright (c) 1997,1998 David Boyce (dsb@world.std.com). All rights
+Copyright (c) 1997,1998,1999 David Boyce (dsb@world.std.com). All rights
 reserved.  This program is free software; you can redistribute it
 and/or modify it under the same terms as Perl itself.
 
 DESCRIPTION
 -----------
 
-This distribution contains a C API for controlling a coprocess as well
-as a Perl module which drives the C API.  It is not necessary to use
+This distribution contains a C API for controlling a co-process as well
+as a Perl module which drives the C API.  It's not necessary to use
 the Perl wrapper; the C API can be called directly from C code if you
 prefer. But generally it can be thought of as a Perl module with a C
 back end.
 
 See the pod documentation at the bottom of ChildSafe.pm for usage
-details ("perldoc IPC::ChildSafe" after installing), or look at the
-included document ChildSafe.html for a longer overview.
+details ("perldoc IPC::ChildSafe" after installing).
 
-There is also a tiny subclassed IPC::ClearTool module included in the
-package, as described below. This also has its own README and pods.
+There's also a tiny subclassed IPC::ClearTool module included in the
+package, as described below. This has its own README and pods.
 
 LATEST VERSION
 --------------
@@ -67,7 +66,7 @@ The basic problem is this: once you've sent a command to a child
 process, how can you know  - synchronously - when the output resulting
 from this command has finished? If you do blocking reads from the child
 and make the mistake of issuing one too many, you'll block forever. If
-you do non-blocking reads you will not hang but you'll never be sure
+you do non-blocking reads you won't hang but you'll never be sure
 you've gotten all the output. The traditional solution is to let the
 child die after each command; the read will unblock and return EOF when
 the command is done and the child dies, but it's this inefficiency (a
@@ -77,8 +76,7 @@ This implementation solves the problem, at least for a subset of
 possible child programs, by using a little trick:  it sends a 2nd
 (trivial) command down the pipe right in back of every real command.
 When we see the the output of this special command in the return pipe,
-we know the real command is done. See the included file ChildSafe.html for
-a detailed overview of the design.
+we know the real command is done.
 
 The other value IPC::ChildSafe adds over simpler packages such as
 Open2/Open3 is that it allows you to register a "discriminator
@@ -98,9 +96,11 @@ while it's known to be useful with cleartool, there are presumably
 other applications which could work in this mode as well. Thus, all
 presumptions about cleartool have been abstracted into a tiny
 subclassed module called IPC::ClearTool. IPC::ChildSafe should work
-with any command-line application which fits this definition of
-well-behaved:  reads stdin, writes stdout, sends errors to stderr, and
-has a trivial command with a reliable output string.
+with any "well-behaved" command-line application, where well-behaved is
+defined as: reads stdin, writes stdout, sends errors to stderr, and has
+a trivial command with a reliable output string. Using the shell as an
+example, the trivial command would be "echo FOO" and the reliable output
+would of course be "FOO".
 
 DESIGN
 ------
@@ -110,9 +110,9 @@ Expect.pm Perl module (or Expect itself), or to code something up
 directly in Perl, perhaps on top of IPC::Open3.  I chose to do it in C
 with a Perl interface because I needed both API's.
 
-I'm sure this algorithm could also be written in pure Perl; it would
-have a slightly higher startup overhead but probably not much. As noted,
-I needed the C interface too.
+I'm also sure this same technique could be implemented in pure Perl; it
+would have a slightly higher startup overhead but probably not much. As
+noted, I needed the C interface too.
 
 INSTALLING
 ----------
@@ -127,13 +127,16 @@ Installation consists of the usual sequence of commands:
 TESTED PLATFORMS
 ----------------
 
-The bulk of my testing has been on Solaris 2.5.1 and Perl 5.004_04.
+The bulk of my testing has been on Solaris 2.5.1 and Perl 5.004_04,
+though as of version 2.30 it's know to work on Linux 6.0 as well.
+CPAN-testers say it works on HP-UX 10 too.
+
 The C code has also been tested briefly on SGI IRIX 5.3 and AIX 4.2
 systems.  The Perl module requires Perl 5.004 or above, due to
 dependence on wantarray() semantics which were added in that release.
 There are presumably other dependencies on 5.004.
 
-I have not attempted to use this on Windows NT.  I'm sure the Perl code
+I haven't attempted to use this on Windows NT.  I'm sure the Perl code
 would be easy to port, and SWIG is reputed to work with NT.  I really
 don't know how similar the semantics of pipes, stdio, etc. are on NT so
 the C code is a mystery, and of course fork() is always problematical
@@ -164,16 +167,15 @@ TESTING
 
 The 'make test' step runs a small smoke-test on the Perl module, of
 course, but you can also do simpler tests (taking Perl out of the
-equation) by building the two sample C programs kshdemo.c and ccdemo.c
+equation) by building the two sample C programs shdemo.c and ccdemo.c
 in ./examples.  The ccdemo.c program will not work unless you have
-ClearCase. Thus the simplest of the tests is kshdemo.c, so I recommend
+ClearCase. The simplest of the tests is shdemo.c, so I recommend
 you not continue until that one works.
 
 FEEDBACK
 --------
 
-This is my first attempt at packaging up a Perl module for public
-consumption, so feel free to provide feedback on any rough edges you
-find.  Also, if you port this to other platforms (especially Windows)
-or enhance it significantly, you have at least a moral obligation to
-send those changes back to me at the above address. TIA.
+Feel free to provide feedback on any rough edges you may find.  Also,
+if you port this to other platforms (especially Windows) or enhance it
+significantly, you have at least a moral obligation to send those
+changes back to me at the above address. TIA.

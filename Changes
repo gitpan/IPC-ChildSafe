@@ -50,11 +50,11 @@ Revision history for Perl extension IPC::ChildSafe.
 	stderr for an error count.
 
 	- Moved ClearCase-specific comments out to subclassed
-	IPC::ClearTool module.
+	  IPC::ClearTool module.
 
 2.25  Sun May 17 12:34:46 1998
 	- Renamed $obj->command() to $obj->cmd() for brevity.
-	Left old method in place but de-documented.
+	  Left old method in place but de-documented.
 
 2.26  Mon Sep 28 09:44:12 EDT 1998
 	- Fixed a bug causing multiple instances to overwrite each other.
@@ -68,3 +68,11 @@ Revision history for Perl extension IPC::ChildSafe.
 
 2.29  Mon Jan 11 10:12:25 EST 1999
 	- Previous fix (2.28) turned out to break with perl <5.006.
+
+2.30 Fri Oct  1 08:07:12 EDT 1999
+	- Fixed a timing bug which caused it to report failure status
+	  for the child process on Linux. I was assuming the child must
+	  have ended before the call to waitpid(), but that was a sloppy
+	  assumption which for whatever reason was always true on
+	  Solaris but never true on Linux. Now I do the right thing.
+	- Made some minor documentation improvements.

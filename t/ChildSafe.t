@@ -25,8 +25,12 @@ print "ok 1\n";
    print "ok 2\n";
 }
 
+# If no ksh exists, assume it's a linux or similar system whose 'sh'
+# is a POSIX-like shell (e.g. bash for linux).
+my $shell = -x q(/bin/ksh) ? q(/bin/ksh) : q(sh);
+
 # Start ksh coprocess for remaining tests.
-$KSH = IPC::ChildSafe->new('ksh', 'echo ++EOT++', '++EOT++');
+$KSH = IPC::ChildSafe->new($shell, 'echo ++EOT++', '++EOT++');
 
 # Test #3
 {
