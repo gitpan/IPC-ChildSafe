@@ -11,7 +11,7 @@
 
 /**
  ****************************************************************************
- ** Copyright (c) 1997,1999 David Boyce (dsb@world.std.com).
+ ** Copyright (c) 1997,1999,2000 David Boyce (dsb@world.std.com).
  ** All rights reserved.
  ** This program is free software; you can redistribute it and/or
  ** modify it under the same terms as Perl.
@@ -47,6 +47,9 @@ static char *xs_ver = "@(#) IPC::ChildSafe " XS_VERSION;
 /** Print debugging messages that assert this level (0=off, 1=low, ...) **/
 int Debug_Level = 0;
 
+/** Boolean - print commands with a leading "-" but don't run them **/
+int No_Exec;
+
 static CHILD *mru_handle;	/* most-recently-used handle */
 
 /** Return a ptr to the '\0' which terminates the given string **/
@@ -77,12 +80,17 @@ static void
 _dbg(const char *f, const unsigned long l, int lvl, const char *fmt,...)
 {
    va_list ap;
-   char buf[STDLINE], *e;
+   char buf[STDLINE], *e, x;
 
-   if (Debug_Level < lvl)
+   if ((!No_Exec && Debug_Level < lvl) || (No_Exec && lvl > 1))
       return;
 
-   (void) fprintf(stderr, "+ %s:%d ", ((e=strrchr(f,'/'))?e+1:f), l);
+   x = No_Exec ? '-' : '+';
+   if (lvl > 2) {
+       (void) fprintf(stderr, "%c %s:%d ", x, ((e=strrchr(f,'/'))?e+1:f), l);
+   } else {
+       (void) fprintf(stderr, "%c ", x);
+   }
    va_start(ap, fmt);
    (void) vsprintf(buf, fmt, ap);
    va_end(ap);
@@ -150,11 +158,11 @@ _cp_newstr(const char *fmt,...)
 }
 
 /** Obsolete but left for reasons of laziness - the SWIG
- ** wrapper code thinks they still exist.
+ ** wrapper thinks they still exist. Need to re-SWIG someday.
  **/
-int Alarm_Wait;
-char * child_get_stdout_perl(CHILD *handle) {return NULL;}
-char * child_get_stderr_perl(CHILD *handle) {return NULL;}
+char *child_get_stdout_perl(CHILD *handle) {return NULL;}
+char *child_get_stderr_perl(CHILD *handle) {return NULL;}
+char *child_gets(char *s, int n, CHILD *handle) {return NULL;}
 
 /**
  ** We did a "lazy fork" when opening the coprocess ... now it's been
@@ -177,7 +185,7 @@ _cp_start_child(CHILD *handle)
    if ((pid = fork()) < 0)
       _cp_syserr("fork");
    else if (pid > 0) {
-      _dbg(F,L,3, "starting child %s (pid=%d) ...", handle->cph_cmd, pid);
+      _dbg(F,L,2, "starting child %s (pid=%d) ...", handle->cph_cmd, pid);
       (void) close(down_pipe[0]);
       if ((downfp = fdopen(down_pipe[1], "w")) == NULL)
 	 _cp_syserr("fdopen");
@@ -283,9 +291,18 @@ child_open(char *cmd, char *tag, char *eot, char *quit)
 }
 
 int bck_read( void* handle, char* buf, int len ){
+  char *eot = ((CHILD*)handle)->cph_eot;
+  int eot_len = strlen(eot);
   if( len ){
-    if( !strncmp( buf, ((CHILD*)handle)->cph_eot, len ) ){
+    if( !strncmp( buf, eot, len ) ){
       _dbg(F,L,3, "logical end of stdin from %s", ((CHILD*)handle)->cph_cmd );
+      return NPOLL_RET_IDLE;
+    } else if (!strncmp(eot, buf+len-eot_len, eot_len)) {
+      len -= eot_len;
+      _dbg(F,L,3, 
+	    "unterminated end of stdin from %s", ((CHILD*)handle)->cph_cmd );
+      _dbg(F,L,2, "<<-- %.*s", len, buf);
+      Perl_av_push( ((CHILD*)handle)->cph_out_array , Perl_newSVpv( buf, len ) );
       return NPOLL_RET_IDLE;
     } else {
       _dbg(F,L,2, "<<-- %.*s", len, buf);
@@ -371,44 +388,6 @@ child_puts(char *s, CHILD *handle, AV* perl_out_array, AV* perl_err_array)
    return n;
 }
 
-
-/**
- ** Analogue: fgets().
- ** Read back output from the current coprocess cmd until the special
- ** output of the tag cmd (aka EOT) is seen. When we read this line,
- ** we throw it away and return NULL as if we had seen EOF on the
- ** pipe.
- ** If passed a buffer, use it. If passed NULL, malloc a new buffer.
- **/
-char *
-child_gets(char *s, int n, CHILD *handle)
-{
-   char buf[BIGLINE];
-
-   UPDATE_HANDLE(handle, mru_handle, NULL);
-
-   /** If not passed a buffer, use a malloc-ed buf instead (perl API hack) **/
-   if (s == NULL)
-      n = sizeof(buf);
-
-   if (fgets(buf, n, handle->cph_back) == NULL)
-      return NULL;
-
-   if (!strcmp(buf, handle->cph_eot)) {
-      if (handle->cph_pending == TRUE) {
-	 handle->cph_pending = FALSE;
-	 _dbg(F,L,4, "<<-- [RET]");
-	 buf[0] = NUL;
-	 return NULL;
-      } else {
-	 fprintf(stderr, "sync error - output found while not pending\n");
-      }
-   }
-
-   _dbg(F,L,2, "<<-- %s", buf);
-   return s ? strcpy(s, buf) : _cp_newstr("%s", buf);
-}
-
 /**
  ** Call this when a subcommand is finished.
  **/
@@ -419,8 +398,8 @@ child_end(CHILD *handle, int show_err)
 }
 
 /**
- ** Send a signal to the coprocess.  Remember, 'kill' is a misnomer.
- ** It's just a signal.
+ ** Send a signal to the coprocess.  Remember, 'kill' is a misnomer;
+ ** it's just a signal.
  **/
 int
 child_kill(CHILD *handle, int signo)
@@ -455,17 +434,19 @@ child_close(CHILD *handle)
    /** ... likewise for the stderr **/
    (void) child_end(handle, CP_SHOW_ERR);
 
-   /** Optionally, explicitly tell the child to give up the ghost */
+   /** provide a high-level dbg msg */
+   _dbg(F,L,2, "ending child %s (pid=%d) ...", handle->cph_cmd,handle->cph_pid);
+
+   /** Optionally, tell the child explicitly to give up the ghost */
    if (handle->cph_quit && *(handle->cph_quit)) {
-      _dbg(F,L,3, "sending '%s' cmd to pid %d",
-		      handle->cph_quit, handle->cph_pid);
+      _dbg(F,L,4, "sending to pid %d: %s",
+		      handle->cph_pid, handle->cph_quit);
       (void) fputs(handle->cph_quit, handle->cph_down);
    }
 
    /** Remove the back and err file descriptors from npoll **/
    poll_del_fd( fileno(handle->cph_back) );
    poll_del_fd( fileno(handle->cph_err) );
-
 
    /** Close the input pipe to the child, which should die gracefully. **/
    if (fclose(handle->cph_down) == EOF

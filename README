@@ -18,8 +18,8 @@ back end.
 See the pod documentation at the bottom of ChildSafe.pm for usage
 details ("perldoc IPC::ChildSafe" after installing).
 
-There's also a tiny subclassed IPC::ClearTool module included in the
-package, as described below. This has its own README and pods.
+There's also a subclass IPC::ClearTool included in the package, as
+described below. This has its own README and pods.
 
 LATEST VERSION
 --------------
@@ -94,13 +94,13 @@ I originally wrote this to control a program called cleartool, which is
 part of a product called ClearCase (http://www.rational.com).  But
 while it's known to be useful with cleartool, there are presumably
 other applications which could work in this mode as well. Thus, all
-presumptions about cleartool have been abstracted into a tiny
-subclassed module called IPC::ClearTool. IPC::ChildSafe should work
-with any "well-behaved" command-line application, where well-behaved is
-defined as: reads stdin, writes stdout, sends errors to stderr, and has
-a trivial command with a reliable output string. Using the shell as an
-example, the trivial command would be "echo FOO" and the reliable output
-would of course be "FOO".
+presumptions about cleartool have been abstracted into a subclass
+called IPC::ClearTool. IPC::ChildSafe itself should work with any
+"well-behaved" command-line application, where well-behaved is defined
+as: reads stdin, writes stdout, sends errors to stderr, and has a
+trivial command with a reliable output string. Using the shell as an
+example, the trivial command would be "echo FOO" and the reliable
+output would of course be "FOO".
 
 DESIGN
 ------

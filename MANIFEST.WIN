@@ -9,7 +9,7 @@ childsafe.h
 examples/Makefile
 examples/ccdemo.c
 examples/shdemo.c
-test.pl
+t/ChildSafe.t
 stresspipes
 IPC-ClearTool/Changes
 IPC-ClearTool/ClearTool.pm
@@ -18,5 +18,6 @@ IPC-ClearTool/README
 IPC-ClearTool/examples/ccbm-one.pl
 IPC-ClearTool/examples/ccbm-mul.pl
 IPC-ClearTool/examples/ccdemo.pl
+IPC-ClearTool/examples/cleartool.pl
 IPC-ClearTool/examples/daily_changes.pl
-IPC-ClearTool/test.pl
+IPC-ClearTool/t/ClearTool.t

@@ -3,8 +3,8 @@
 
 /*
  ****************************************************************************
- ** Copyright (c) 1997 David Boyce (dsb@world.std.com). All rights reserved.
- ** This program is free software; you can redistribute it and/or
+ ** Copyright (c) 1997-2000 David Boyce (dsb@world.std.com). All rights
+ ** reserved. This program is free software; you can redistribute it and/or
  ** modify it under the same terms as Perl itself.
  ****************************************************************************
  */
@@ -47,7 +47,7 @@ extern int child_kill(CHILD *, int);
  ** These externals are exported in case the client wants to tweak them.
  **/
 extern int Debug_Level;
-extern int Alarm_Wait;
+extern int No_Exec;
 
 /**
  ** Flag values which indicate whether we want to see error output.

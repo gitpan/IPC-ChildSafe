@@ -30,10 +30,8 @@
  **/
 CHILD *child_open(char *, char *, char *, char *); /* Open (start) a child */
 int child_puts(char *, CHILD *); /* Send a command to the child */
-%new char *child_get_stdout_perl(CHILD *); /* Read back a line of output */
-%new char *child_get_stderr_perl(CHILD *); /* Read a line of stderr output */
 int child_close(CHILD *);     /* Close (end) the child */
 int child_kill(CHILD *, int); /* Send a signal to the child process */
 
 int Debug_Level; /* For tracing parent/child communication */
-int Alarm_Wait;  /* Period to allow blocking before poll of stderr */
+int No_Exec;	 /* Cause commands to be echoed but not run */

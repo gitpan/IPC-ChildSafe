@@ -31,7 +31,7 @@ if ($^O !~ /win32/i) {
 }
 
 # The current version and a way to access it.
-$VERSION = "3.04"; sub version {$VERSION}
+$VERSION = "3.08"; sub version {$VERSION}
 
 # This is an undocumented service method, used only by the
 # constructor. It's broken out to make it easier for the
@@ -208,8 +208,7 @@ for my $mode (qw(NOTIFY STORE PRINT IGNORE)) {
 ########################################################################
 sub status {
    my $self = shift;
-   return int &{$self->{IPC_ERRCHK}}(\@{$self->{IPC_STDERR}},
-				  \@{$self->{IPC_STDOUT}});
+   return int &{$self->{IPC_ERRCHK}}($self->{IPC_STDERR}, $self->{IPC_STDOUT});
 }
 
 ########################################################################
@@ -297,6 +296,18 @@ sub dbglevel {
    } else {
       $IPC::ChildSafe::Debug_Level = $IPC::ChildSafe::Debug_Level ? 0 : -1>>1;
    }
+   $self->{DBGLEVEL} = $IPC::ChildSafe::Debug_Level;
+}
+
+# Similar to dbglevel method. Modifies a class attribute in the C code.
+sub noexec {
+    my $self = shift;
+    if (@_) {
+	$IPC::ChildSafe::No_Exec = shift;
+    } elsif (!defined wantarray) {
+	$IPC::ChildSafe::No_Exec = 1;
+    }
+    $self->{NOEXEC} = $IPC::ChildSafe::No_Exec;
 }
 
 #   This is undocumented but such a horrible hack that it needs a comment.
@@ -314,10 +325,10 @@ sub dbglevel {
 if ($^O =~ /win32/i) {
     sub _fixup_COM_scalars {
 	my($self, $line) = @_;
-	return undef if !defined $line;
+	return () if !defined $line;
 	$line =~ s%\cM\cJ$%%s;
 	my @lines = map {"$_\n"} split(m%\cM\cJ%, $line, -1);
-	if ($self->{IPC_CHILD_REV}) {
+	if (defined($self->{IPC_CHILD_REV}) && $self->{IPC_CHILD_REV} < 4) {
 	    return reverse @lines;	# hack for bug in 3.2.1 CmdExec
 	} else {
 	    return @lines;
@@ -343,8 +354,8 @@ if ($^O =~ /win32/i) {
 	$tree->GetValues(\%data);
 	$tree->Close;
 	$major = (split(/\./, $data{ClearCaseMajorVersion}->[2]))[0];
-	$self->{IPC_CHILD_REV} = ($major < 4) ? 1 : 0;
-	warn "Warning: the 'cc_321_hack' is unnecessary in CC 4.0!\n"
+	$self->{IPC_CHILD_REV} = $major;
+	warn "Note: the 'cc_321_hack' is unnecessary in CC 4.0!\n"
 						if !$self->{IPC_CHILD_REV};
 	return $self->{IPC_CHILD_REV};
     };
@@ -546,6 +557,16 @@ error discriminator and return its results (aka the error count).
 =item * B<finish>
 
 Ends the child process and returns its final exit status.
+
+=item * B<dbglevel>
+
+Sets a debugging (verbosity) level. Current defined levels are 1-4.
+Verbosity lines are printed with a leading '+'.
+
+=item * B<noexec>
+
+Sets the 'noexec' attribute, which causes commands to not be run but to
+be printed with a leading '-'.
 
 =back
 

@@ -4,9 +4,9 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'	=> 'IPC::ClearTool',
     'VERSION_FROM' => 'ClearTool.pm', # finds $VERSION
-    'LIBS'	=> [''],   # e.g., '-lm' 
-    'DEFINE'	=> '',     # e.g., '-DHAVE_SOMETHING' 
-    'INC'	=> '',     # e.g., '-I/usr/include/other' 
-    'dist'	=> { SUFFIX => ".gz", DIST_DEFAULT => 'all tardist',
-    'COMPRESS' => "gzip -f" },
+    'dist'		=> {
+	    COMPRESS => 'gzip --force --best',
+	    TAR	 => 'gtar',
+	    TARFLAGS => '--mode=u+w -cvf',
+    },
 );

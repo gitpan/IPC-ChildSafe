@@ -16,6 +16,8 @@ BEGIN {
    }
 }
 
+use Cwd 'getcwd';
+
 use IPC::ClearTool;
 $final += printok(1);
 
@@ -25,4 +27,17 @@ if ($^O !~ /win32/i && ! -x '/usr/atria/bin/cleartool') {
 }
 
 my $CT = IPC::ClearTool->new;
-printok($CT->cmd('pwv') == 0 && $CT->stdout == 2 && $CT->finish == 0);
+$final += printok($CT->cmd('pwv') == 0 && $CT->stdout == 2);
+$CT->cmd;
+
+# Testing the chdir method.
+$CT->chdir('/');
+my $cwd = getcwd();
+my %results = $CT->cmd('pwd');
+chomp(my $ccwd = ${results{stdout}}[0]);
+$cwd =~ s%\\%/%g; $ccwd =~ s%\\%/%g;
+$final += printok($cwd eq $ccwd);
+
+$final += printok($CT->finish == 0);
+
+exit $final;

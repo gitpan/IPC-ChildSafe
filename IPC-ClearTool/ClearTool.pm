@@ -44,6 +44,21 @@ sub comment {
     return $self;
 }
 
+sub chdir {
+    my $self = shift;
+    my $nwd = shift;
+    if ($^O =~ /win32/i) {
+	return $self->cmd(qq(cd $nwd));
+    } else {
+	if (!CORE::chdir($nwd)) {
+	    warn "$nwd: $!\n";
+	    return 0;
+	}
+	return $self->cmd(qq(cd "$nwd"));
+    }
+}
+*cd = *chdir;
+
 sub _open {
     my $self = shift;
     if ($^O =~ /win32/i) {
@@ -59,16 +74,18 @@ sub _puts {
     my $self = shift;
     if ($^O =~ /win32/i) {
 	my $cmd = shift;
-
-	# Send the command down to the child.
-	my $out = $self->{IPC_CHILD}->CmdExec($cmd)
-		|| die("Cleartool error: ", Win32::OLE->LastError, "\n");
+	my $dbg = $self->{DBGLEVEL} || 0;
+	warn "+ -->> $cmd\n" if $dbg;
+	my $out = $self->{IPC_CHILD}->CmdExec($cmd);
+	my $error = int Win32::OLE->LastError;
+	$self->{IPC_STATUS} = $error;
 	# CmdExec always returns a scalar through Win32::OLE so
 	# we have to split it in case it's really a list.
-	push(@{$self->{IPC_STDOUT}}, $self->_fixup_COM_scalars($out));
-	my $error = Win32::OLE->LastError;
-	$self->{IPC_STATUS} = int $error;		# numeric form
-	push(@{$self->{IPC_STDERR}}, $error) if $error;	# string form
+	my @stdout = $self->_fixup_COM_scalars($out) if $out;
+	print map {"+ <<-- $_"} @stdout if @stdout && $dbg > 1;
+	push(@{$self->{IPC_STDOUT}}, @stdout);
+	push(@{$self->{IPC_STDERR}},
+		$self->_fixup_COM_scalars(Win32::OLE->LastError)) if $error;
 	return $self;
     }
     return $self->SUPER::_puts(@_);
@@ -78,7 +95,7 @@ sub finish {
     my $self = shift;
     if ($^O =~ /win32/i) {
 	undef $self->{IPC_CHILD};
-	return undef;
+	return 0;
     }
     return $self->SUPER::finish(@_);
 }
@@ -111,7 +128,7 @@ IPC::ClearTool, ClearTool - run a bidirectional pipe to a cleartool process
   $CT->notify;				# "notify mode" is default;
   $rc = $CT->cmd("pwv");		# same as above
 
-  $CT->store;				# "Store mode" - stack up stderr for
+  $CT->store;				# "Store mode" - hold stderr for
   $rc = $CT->cmd("pwv -X");		# later retrieval via $CT->stderr
   @errs = $CT->stderr;			# Retrieve it now
 
@@ -161,43 +178,18 @@ The $CT->finish method ends the child process and returns its exit
 status.
 
 This is only a summary of the documentation. There are more advanced
-methods for error detection, data return, etc. which are documented as
-part of IPC::ChildSafe. Note that IPC::ClearTool is simply a very small
-subclass of IPC::ChildSafe; it merely provides the right defaults to
-IPC::ChildSafe's constructor for running cleartool. In all other ways
-it is identical to ChildSafe and all ChildSafe documentation applies.
-
-=head1 WIN32 ISSUES
-
-On UNIX, this module works by running cleartool as a child process.  On
-Windows, the ClearCase Automation Library (a COM API) is used instead.
-B<This provides the same interface but be warned that there's a subtle
-semantic difference!> On UNIX you can send a setview command to the
-child and it will run in the new view while the parent's environment
-remains unchanged. On Windows there's no subprocess; thus the setview
-would change the context of the "parent process".  The same applies to
-chdir commands. It's unclear which behavior is "better" overall, but in
-any case portable applications must take extra care in using such
-stateful techniques.
-
-Also, due to the way Win32::OLE works, on Windows the results of each
-command are passed back as a single string, possibly with embedded
-newlines. For consistency, in a list context we split this back into
-lines and return the list. However, it's possible for this to result in
-a different line count for the same command in UNIX and NT, if one of
-the lines would have had embedded newlines in it anyway.
-
-The ClearCase/COM API isn't documented until CC 4.0, but it's actually
-present (at least the IClearTool interface, which is what
-IPC::ClearTool uses) in 3.2.1 with one major bug - all output arrives
-backwards! So we provide a class method
-
-	IPC::ClearTool->cc_321_hack;
-
-which, if called, will determine whether it's running on CC 3.2.1 and
-if so reverse the order of output. 
+methods for error detection, data return, etc. documented as part of
+IPC::ChildSafe. Note that IPC::ClearTool is simply a small subclass of
+ChildSafe; it provides the right defaults to ChildSafe's constructor
+for running cleartool and adds a few ClearCase-specific methods. In all
+other ways it's identical to ChildSafe, and all ChildSafe documentation
+applies.
 
 =head1 BUGS
+
+=over 4
+
+=item * Comments
 
 Comments present a special problem. If a comment is prompted for, it
 will likely hang the child process by interrupting the tag/eot
@@ -208,11 +200,65 @@ that there's no clean way to handle multi-line comments.
 
 To work around this, a method C<$CT->comment> is provided which
 registers a comment I<to be passed to the next C<$CT->cmd()> command>.
-It's placed in the stdin stream with a trailing ".\n" appended.
+It's inserted into the stdin stream with a "\n.\n" appended.
 The subsequent command must have a C<-cq> flag, e.g.:
 
     $CT->comment("Here's a\nmultiple line\ncomment");
     $CT->cmd("ci -cq foo.c");
+
+If your script hangs and the comment for the last element checked in is
+C<"pwd -h">, then you were burned by such a sync problem.
+
+=item * UNIX/Win32 Semantics Skew
+
+On UNIX, this module works by running cleartool as a child process.  On
+Windows, the ClearCase Automation Library (a COM API) is used instead.
+This provides the same interface B<but be warned that there's a subtle
+semantic difference!> On UNIX you can send a setview command to the
+child and it will run in the new view while the parent's environment
+remains unchanged. On Windows there's no subprocess; thus the setview
+would change the context of the "parent process".  The same applies to
+chdir commands. It's unclear which behavior is "better" overall, but in
+any case portable applications must take extra care in using such
+stateful techniques.
+
+As a partial remedy, a C<chdir> method is provided. This simply does
+the C<cd> in both parent and child processes in an attempt to emulate
+the in-process behavior. Emulating an in-process C<setview> is harder
+because on UNIX, setview is implemented with a fork/chroot/exec
+sequence so (a) it's hard to know how a single-process setview
+I<should> behave and (b) I wouldn't know how to do it anyway,
+especially lacking the privileges required by chroot(2). Of course
+in most cases you could work around this by using C<chdir> to work
+in view-extended space rather than a set view.
+
+Of course, in some cases the ability to set the child process into a
+different view or directory is a feature, and no attempt is made to
+stop you from doing that.
+
+=item * Win32::OLE Behavior with IClearTool
+
+Due to the way Win32::OLE works, on Windows the results of each
+command are passed back as a single string, possibly with embedded
+newlines. For consistency, in a list context we split this back into
+lines and return the list. However, it's possible for this to result in
+a different line count for the same command in UNIX and NT, if one of
+the lines would have had embedded newlines in it anyway.
+
+=item * Win32/CC 3.2.1 COM Bug
+
+The ClearCase/COM API wasn't documented until CC 4.0, but it's actually
+present (at least the IClearTool interface, which is what
+IPC::ClearTool uses) in 3.2.1 with one major bug - all output arrives
+backwards! So we provide a class method
+
+	IPC::ClearTool->cc_321_hack;
+
+which, if called, will determine whether it's running on CC 3.2.1 and
+if so reverse the order of output. This is called once at the start of the
+program to set the state; it's a no-op if CC 4.0 or above is in use.
+
+=back
 
 =head1 AUTHOR
 

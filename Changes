@@ -145,7 +145,17 @@ Revision history for Perl extension IPC::ChildSafe.
 
 3.04 Wed Dec 22 12:07:35 EST 1999
 	- Urk - another SunOS4 fix (for platforms without ssize_t).
-	- This version tested on Solaris 2.5/6/7, SunOS4, Compaq OSF/1 V4.0,
-	  HP/UX 10.20, and AIX 4.3 in various combinations with
-	  Perl 5.004 and 5.005.
+	- This version tested on Solaris 2.5/6/7, SunOS4, Compaq
+	  OSF/1 V4.0, HP/UX 10.20, UnixWare 7.0.1, and AIX 4.3
+	  in various combinations with Perl 5.004 and 5.005.
 	- Cleaned up some test scripting issues.
+
+3.05 Fri Dec 24 15:51:55 EST 1999
+	- Added 'chdir' method and some doc work.
+
+3.06 Tue Jan  4 23:10:55 EST 2000
+	- Made it work with non-newline-terminated return values.
+	- Added 'noexec' method.
+
+3.08 Sat Jan 15 20:22:30 EST 2000
+	- Fixed a couple of warnings.

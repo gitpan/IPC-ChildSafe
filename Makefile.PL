@@ -1,17 +1,20 @@
 use ExtUtils::MakeMaker;
 
-# This module uses an XSUB on Unix. On Windows the XSUB wouldn't
+# This module uses XS on Unix. On Windows the XS code wouldn't
 # work. However, the hack below allows the module to be installed
-# on Windows anyway; this is because it's possible to subclass it
-# such that it DOES work. See ClearTool.pm.
+# on Windows anyway; this is done because it's possible to subclass it
+# such that it DOES work (see ClearTool.pm).
 
 if ($^O !~ /win32/i) {
     WriteMakefile(
-	'NAME'	=> 'IPC::ChildSafe',
-	'OBJECT'  	=> 'childsafe.o ChildSafe_wrap.o npoll.o',
-	'VERSION_FROM' => 'ChildSafe.pm', # finds $VERSION
-	'dist' => { SUFFIX => ".gz", DIST_DEFAULT => 'all tardist',
-	'COMPRESS' => "gzip -f" },
+	NAME		=> 'IPC::ChildSafe',
+	OBJECT  	=> 'childsafe.o ChildSafe_wrap.o npoll.o',
+	VERSION_FROM	=> 'ChildSafe.pm',
+	dist		=> {
+	    COMPRESS	=> 'gzip --force --best',
+	    TAR		=> 'gtar',
+	    TARFLAGS	=> '--mode=u+w -cvf',
+	},
     );
 } else {
     # This is an awful hack but I stole it from Data::Dumper by
