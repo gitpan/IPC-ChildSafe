@@ -6,7 +6,7 @@ use Carp;
 require Exporter;
 require DynaLoader;
 
-$VERSION = '3.14';
+$VERSION = '3.15';
 # Exports are retained mostly for backward compatibility. Modern uses should
 # (generally) employ the methods of the same name, e.g. $obj->store(1);
 @EXPORT_OK = qw(NOTIFY STORE PRINT IGNORE);
@@ -262,6 +262,23 @@ sub errchk {
    my $old_errchk = $self->{IPC_ERRCHK};
    $self->{IPC_ERRCHK} = shift if @_;
    return $old_errchk;
+}
+
+########################################################################
+# Send a signal to the child process, which is in a different session.
+########################################################################
+sub kill {
+   my $self = shift;
+   my $signo = shift || 2;	# default is SIGINT (2)
+   if ($signo !~ /^\d+$/) {
+      require Config;
+      $signo =~ s%^SIG%%i;
+      my $i = 0;
+      my %sigmap = map {$_ => $i++} split ' ', $Config::Config{sig_name};
+      $signo = $sigmap{$signo};
+   }
+   my $status = child_kill(${$self->{IPC_CHILD}}, $signo);
+   return $status;
 }
 
 ########################################################################
@@ -528,6 +545,24 @@ method can operate on it.
 Pass the current stdout and stderr buffers to the currently-registered
 error discriminator and return its results (aka the error count).
 
+=item * B<kill>
+
+Sends an interrupt signal to the child process.  If you've installed a
+signal handler in the parent using %SIG, you can use -E<gt>kill to stop
+the command I<currently> running in the child from within the handler,
+then continue to use the child for potential cleanup operations before
+shutting down.
+
+A signal other than SIGINT (aka Ctrl-C) may be sent by specifing its
+name, e.g.
+	
+    $child->kill('HUP');
+
+However, note that signal handling is very complex. The only code path
+tested is that of SIGINT and other signals may have unpredictable
+results. Even with SIGINT, a great deal depends on how the tool running
+as the child process handles it.
+
 =item * B<finish>
 
 Ends the child process and returns its final exit status.
@@ -558,4 +593,3 @@ perl(1), "perldoc IPC::Open3", _Advanced Programming in the Unix Environment_
 by W. R. Stevens
 
 =cut
-

@@ -14,7 +14,7 @@ if ($#ARGV >= $[) {
 # Instantiate a ClearTool object (start the cleartool process).
 $CT = IPC::ClearTool->new;
 
-#$CT->debug(2);
+#$CT->dbglevel(2);
 
 # In this loop we iterate over each file in the current directory,
 # sending a 'describe' command to cleartool for each one.

@@ -26,4 +26,5 @@ IPC-ClearTool/examples/ccbm-mul.pl
 IPC-ClearTool/examples/ccdemo.pl
 IPC-ClearTool/examples/cleartool.pl
 IPC-ClearTool/examples/daily_changes.pl
+IPC-ClearTool/examples/sigint.pl
 IPC-ClearTool/t/ClearTool.t

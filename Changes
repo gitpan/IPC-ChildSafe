@@ -194,3 +194,7 @@ Revision history for Perl extension IPC::ChildSafe.
 3.14 Thu Nov 15 13:18:53 EST 2001
 	- Improved patch from Daphne Pfister @nortelnetworks.com;
 	  previous one broke on 5.004.
+
+3.15 Mon Sep 16 18:05:10 EDT 2002
+	- Maintenance work. Minor change to signal handling, may or may
+	  not fix a reported problem. 

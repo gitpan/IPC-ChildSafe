@@ -67,6 +67,31 @@ static CHILD *mru_handle;	/* most-recently-used handle */
       if (p->cph_pid == 0) return r;	\
    }
 
+typedef	void	Sigfunc(int);
+
+Sigfunc *
+reliable_signal(int signo, Sigfunc *func)
+{
+    struct sigaction act, oact;
+
+    act.sa_handler = func;
+    if (sigemptyset(&act.sa_mask))
+	return (SIG_ERR);
+    act.sa_flags = 0;
+    if (signo == SIGALRM) {
+#ifdef	SA_INTERRUPT
+	act.sa_flags |= SA_INTERRUPT;	/* SunOS */
+#endif
+    } else {
+#ifdef	SA_RESTART
+	act.sa_flags |= SA_RESTART;	/* SVR4, 44BSD */
+#endif
+    }
+    if (sigaction(signo, &act, &oact) < 0)
+	return (SIG_ERR);
+    return (oact.sa_handler);
+}
+
 /**
  ** This prints a format string and args, in the manner of printf,
  ** to stderr if the specified debug level is exceeded.
@@ -155,8 +180,8 @@ _cp_newstr(const char *fmt,...)
    return strcpy(ptr, buf);
 }
 
-/** Obsolete but left for reasons of laziness - the SWIG
- ** wrapper thinks they still exist. Need to re-SWIG someday.
+/** Obsolete but left for reasons of laziness - the old
+ ** SWIG-generated XS code thinks they still exist.
  **/
 char *child_get_stdout_perl(CHILD *handle) {return NULL;}
 char *child_get_stderr_perl(CHILD *handle) {return NULL;}
@@ -206,19 +231,11 @@ _cp_start_child(CHILD *handle)
       handle->cph_back = backfp;
       handle->cph_err = errfp;
 
-      /**
-       ** Put the child in its own process group. This is done to
-       ** keep signals sent to the parent from going to the child.
-       ** For instance, if the user wants to quit a program which
-       ** is running a coprocess by sending it a SIGINT, the parent
-       ** may choose to handle SIGINT and trap to a cleanup routine,
-       ** which may need the child process to help with the cleanup.
-       ** Thus we can't let the child die before the parent. This is
-       ** no big deal, because if the parent catches a signal and
-       ** just dies (e.g. the SIG_DFL case), the child will exit
-       ** as soon as it reads EOF from stdin anyway.
-       **/
-      (void) setpgid(pid, pid);
+      /*
+       * Make sure the usual "slow system call" suspects (see sigaction(2))
+       * are restarted on (at least) a Ctrl-C.
+       */
+      reliable_signal(SIGINT, SIG_DFL);
 
       return 0;
    } else {
@@ -244,10 +261,21 @@ _cp_start_child(CHILD *handle)
 	 (void) close(err_pipe[1]);
       }
 
-      /** We want to be in our own process group.  The parent may
-       ** already have done this.
+      /**
+       ** Put the child in its own session. This is done to
+       ** keep signals sent to the parent from going to the child.
+       ** For instance, if the user wants to quit a program which
+       ** is running a coprocess by sending it a SIGINT, the parent
+       ** may choose to handle SIGINT and trap to a cleanup routine,
+       ** which may need the child process to help with the cleanup.
+       ** Thus we can't let the child die before the parent. This is
+       ** no big deal, because if the parent catches a signal and
+       ** just dies (e.g. the SIG_DFL case), the child will exit
+       ** as soon as it reads EOF from stdin anyway.
        **/
-      (void) setpgid(0, 0);
+      if (setsid() == -1) {
+	 _cp_syserr("setsid");
+      }
 
       (void) execlp(handle->cph_cmd, handle->cph_cmd, NULL);
       _cp_syserr(handle->cph_cmd);
@@ -313,10 +341,19 @@ int bck_read( void* handle, char* buf, int len ){
 }
 
 int err_read( void* handle, char* buf, int len ){
-  _dbg(F,L,2, "<<== %.*s", len, buf);
   if( len ){
-    Perl_av_push( aTHX_ ((CHILD*)handle)->cph_err_array , Perl_newSVpv( aTHX_ buf, len ) );
-    return NPOLL_CONTINUE;
+    /*
+     * Interrupt handling doesn't work quite right. As yet undiagnosed
+     * but this code is left in because it's no worse than not having it.
+     */
+    if( !strncmp( buf, "Interrupt", 9 ) ){
+      _dbg(F,L,3, "interrupted end of cmd from %s", ((CHILD*)handle)->cph_cmd );
+      return NPOLL_RET_IDLE;
+    } else {
+      _dbg(F,L,2, "<<== '%.*s'", len, buf);
+      Perl_av_push( aTHX_ ((CHILD*)handle)->cph_err_array , Perl_newSVpv( aTHX_ buf, len ) );
+      return NPOLL_CONTINUE;
+    }
   } else {
     return NPOLL_RET_IDLE;
   }

@@ -9,9 +9,7 @@ Win32::OLE->Option(Warn => 0);
 my $ct = Win32::OLE->new('ClearCase.ClearTool');
 
 # Stdout equivalent
-## Note: CmdExec always returns a scalar through Win32::OLE so we
-## should really split the output in case it started out as a list.
-$out = $ct->CmdExec(@ARGV);
+$out = $ct->CmdExec("@ARGV");
 print $out;
 
 # Return code

@@ -101,8 +101,8 @@ presumptions about cleartool have been abstracted into a subclass
 called IPC::ClearTool. IPC::ChildSafe itself should work with any
 "well-behaved" command-line application, where well-behaved is defined
 as: reads stdin, writes stdout, sends errors to stderr, and has a
-trivial command with a reliable output string. Using the shell as an
-example, the trivial command would be "echo FOO" and the reliable
+trivial command with a reliable one-line output string. Using the shell
+as an example, the trivial command would be "echo FOO" and the reliable
 output would of course be "FOO".
 
 DESIGN

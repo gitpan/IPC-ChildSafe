@@ -9,13 +9,13 @@ BEGIN {
     }
 }
 
-use IPC::ChildSafe 3.11;
+use IPC::ChildSafe 3.15;
 @EXPORT_OK = @IPC::ChildSafe::EXPORT_OK;
 %EXPORT_TAGS = ( BehaviorMod => \@EXPORT_OK );
 @ISA = q(IPC::ChildSafe);
 
 # The current version and a way to access it.
-$VERSION = "2.00"; sub version {$VERSION}
+$VERSION = "3.15"; sub version {$VERSION}
 
 sub new {
     my $proto = shift;
@@ -47,13 +47,13 @@ sub comment {
 sub chdir {
     my $self = shift;
     my $nwd = shift;
+    if (!CORE::chdir($nwd)) {
+	warn "$nwd: $!\n";
+	return 0;
+    }
     if ($^O =~ /win32|Windows_NT|cygwin/i) {
 	return $self->cmd(qq(cd $nwd));
     } else {
-	if (!CORE::chdir($nwd)) {
-	    warn "$nwd: $!\n";
-	    return 0;
-	}
 	return $self->cmd(qq(cd "$nwd"));
     }
 }
@@ -169,7 +169,7 @@ process and opens pipes to its standard input, output, and standard
 error. Cleartool commands may be sent "down the pipe" via the
 $CT-E<gt>cmd() method.  All stdout resulting from commands is stored in
 the object and can be retrieved at any time via the $CT-E<gt>stdout
-method. By default, stderr from commands is sent directly to the real
+method. By default, stderr from commands is sent directly to the C<real>
 (parent's) stderr but if the I<store> attribute is set as shown above,
 stderr will accumulate just like stdout and must be retrieved via
 C<$CT-E<gt>stderr>.
@@ -177,14 +177,15 @@ C<$CT-E<gt>stderr>.
 If $CT-E<gt>cmd is called in a void context it will exit on error
 unless the I<ignore> attribute is set, in which case all output is
 thrown away and error messages suppressed.  If called in a scalar
-context it returns the exit status of the command.
+context it returns the exit status of the command. In a list context
+it returns a hash containing keys C<stdout>, C<stderr>, and <status>.
 
 When used with no arguments and in a void context, $CT-E<gt>cmd simply
 clears the stdout and stderr accumulators.
 
-The $CT-E<gt>stdout and $CT-E<gt>stderr methods behave just like
+The $CT-E<gt>stdout and $CT-E<gt>stderr methods behave much like
 arrays; when used in a scalar context they return the number of lines
-currently stored.  When used in an array context they return, well, an
+currently stored.  When used in a list context they return an
 array containing all currently stored lines, and then clear the
 internal stack.
 
@@ -194,9 +195,9 @@ status.
 This is only a summary of the documentation. There are more advanced
 methods for error detection, data return, etc. documented as part of
 IPC::ChildSafe. Note that IPC::ClearTool is simply a small subclass of
-ChildSafe; it provides the right defaults to ChildSafe's constructor
-for running cleartool and adds a few ClearCase-specific methods. In all
-other ways it's identical to ChildSafe, and all ChildSafe documentation
+ChildSafe; it provides the right defaults to the constructor for
+running cleartool and adds a few ClearCase-specific methods. In other
+ways it's identical to ChildSafe, and all ChildSafe documentation
 applies.
 
 =head1 BUGS
@@ -246,9 +247,9 @@ especially lacking the privileges required by chroot(2). Of course
 in most cases you could work around this by using C<chdir> to work
 in view-extended space rather than a set view.
 
-Of course, in some cases the ability to set the child process into a
-different view or directory is a feature, and no attempt is made to
-stop you from doing that.
+In some cases the ability to set the child process into a different
+view or directory is a feature so no attempt is made to stop you from
+doing that.
 
 =item * Win32::OLE Behavior with IClearTool
 
@@ -262,6 +263,10 @@ lines and return the list.
 =head1 AUTHOR
 
 David Boyce dsb@boyski.com
+
+Copyright (c) 1997-2002 David Boyce. All rights reserved. This perl
+program is free software; you may redistribute it and/or modify it
+under the same terms as Perl itself.
 
 =head1 SEE ALSO
 

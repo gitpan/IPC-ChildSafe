@@ -12,3 +12,6 @@ Revision history for Perl extension IPC::ClearTool.
 3.10 Wed Feb  2 14:35:14 EST 2000
 	- Fixed bugs in error handling on Windows/COM. Remove
 	  Win32::OLE-added verbiage from error msg.
+
+3.15 Fri Feb 14 12:18:17 EST 2003
+	- Fixed a bug in ->chdir on Windows which broke the ClearTool.t test

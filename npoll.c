@@ -128,9 +128,14 @@ poll_rcv( double timeout ){
 
   /* Guard against enternal blocking: avoid empty vector and no timeout. */
   while( ( fd_use > 0 || milsec >= 0 ) &&
-         ( nready = poll( fd_vec, fd_use, milsec ) ) > 0 ){
+         ( nready = poll( fd_vec, fd_use, milsec ) ) != 0 ){
     int stop = 0;
     int id;
+
+    /* Restart the poll() system call if it was interrupted */
+    if ( ( nready < 0 ) && ( errno == EINTR ) ){
+	continue;
+    }
 
     for( id = 0; nready > 0 && id < fd_use; id++ ){
       int rv = 0;

@@ -6,6 +6,29 @@ Copyright (c) 1998-2001 David Boyce (dsb@boyski.com). All rights
 reserved.  This program is free software; you can redistribute it
 and/or modify it under the same terms as Perl itself.
 
+OBSOLESCENCE ALERT
+------------------
+
+Though this module continues to work, as of spring 2002 there are two
+reasons for deprecating its *direct* use:
+
+1. Rational has released a supported module called ClearCase::CtCmd.
+Though IPC::ClearTool retains some advantages over CtCmd, the fact that
+CtCmd is supported as well as a bit faster and simpler to use make it
+the default choice nowadays.
+
+2. In preference to coding to either API, though, I recommend
+installing ClearCase::Argv and coding to that. ClearCase::Argv provides
+an abstraction layer such that a script using it can be told to run
+using IPC::ClearTool, ClearCase::CtCmd, or the original
+system/backquotes model by changing one line or via a command-line
+flag. Thus it lets you avoid painting yourself into a corner by
+committing to any low-level API and would potentially let you switch to
+any future fancy new API without rewriting. The proof of this is that
+it predates CtCmd by a couple of years, yet I was able to add CtCmd
+support to it in a few hours and scripts that previously used
+IPC::ClearTool now work with either.
+
 DESCRIPTION
 -----------
 
