@@ -16,7 +16,7 @@ main(int argc, char *argv[])
    char line[1024];		/* general-purpose char buffer */
 
    /* Open (start) the shell process */
-   if ((schp = child_open("sh", "echo ++EOT++", "++EOT++")) == NULL)
+   if ((schp = child_open("sh", "echo ++EOT++", "++EOT++", "exit")) == NULL)
       return 1;
    /* Run an ls cmd, then get its output and check its exit code. */
    if (child_puts("ls -lrt /var", schp) <= 0)

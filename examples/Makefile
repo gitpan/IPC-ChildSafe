@@ -13,7 +13,10 @@ libchildsafe.a: childsafe.o
 	$(AR) r $@ $?
 
 shdemo: shdemo.o libchildsafe.a
-	$(CC) -o shdemo shdemo.o libchildsafe.a
+	$(CC) $(CFLAGS) -o shdemo shdemo.o libchildsafe.a
 
 ccdemo: ccdemo.o libchildsafe.a
-	$(CC) -o ccdemo ccdemo.o libchildsafe.a
+	$(CC) $(CFLAGS) -o ccdemo ccdemo.o libchildsafe.a
+
+clean::
+	@rm -f *.o *.a

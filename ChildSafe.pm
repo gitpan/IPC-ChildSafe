@@ -24,23 +24,38 @@ bootstrap IPC::ChildSafe;
 var_ChildSafe_init();
 
 # The current version and a way to access it.
-$VERSION = "2.32"; sub version {$VERSION}
+$VERSION = "2.33"; sub version {$VERSION}
 
 ########################################################################
-# Just a thin layer over child_open (see childsafe.c). Optional last
-# argument is a function to examine stderr output and determine
-# whether it constitutes an error.  If no REF CODE is supplied for $chk,
-# we use a default internal subroutine.
+# Just a thin layer over child_open (see childsafe.c). We also allow an
+# optional last arg which is a hash-ref containing miscellaneous params.
+# This isn't published, it's really just a hack to allow the ClearTool
+# subclass to work more smoothly. We also support, for backward compat,
+# an initial mode and/or error discriminator here, but the modern/published
+# interface is that these are set after construction via the appropriate
+# methods. If no error discriminator is provided we use a default
+# internal subroutine.
 ########################################################################
 sub new {
    my $proto = shift;
    my $class = ref($proto) || $proto;
-   my($cmd, $tag, $ret, $mode, $chk) = @_;
+   my $cmd = shift;
+   my $tag = shift;
+   my $ret = shift;
+   my($mode, $chk, $quit);
 
-   # Hack for compatibility with <= 2.30
-   if ($mode && ref($mode)) {
-      $chk = $mode;
-      undef $mode;
+   # Hacks for backward compatibility with <2.33 versions
+   if (ref($_[0]) eq 'HASH') {
+      my %params = %{shift @_};
+      local $^W = 0;
+      $chk = $params{CHK};
+      $mode = $params{MODE};
+      $quit = $params{QUIT};
+   } elsif (ref($_[0]) eq 'CODE') {
+      $chk = shift;
+   } elsif (@_) {
+      $mode = shift;
+      $chk = shift if @_;
    }
 
    # Initialize the hash which will represent this object.
@@ -62,7 +77,10 @@ sub new {
 	 };
    }
 
-   $self->{_CHILD} = \child_open($cmd, $tag, $ret);
+   {
+       local $^W = 0;
+       $self->{_CHILD} = \child_open($cmd, $tag, $ret, $quit);
+   }
    @{$self->{_STDOUT}} = ();
    @{$self->{_STDERR}} = ();
 

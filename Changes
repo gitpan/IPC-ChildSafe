@@ -87,3 +87,17 @@ Revision history for Perl extension IPC::ChildSafe.
 	  when obj-ref goes out of scope.
 	- Renamed child.c to childsafe.c etc. for cosmetic reasons.
 	  (apologies to anyone inconvenienced by this!).
+
+2.33 Mon Nov 29 12:36:21 EST 1999
+	- To fix an esoteric bug I was forced to make a slightly
+	  incompatible change to the C API. This should not affect Perl
+	  users at all (except for having the bug fixed, that is).
+	  The change was to add a 4th parameter to the child_open()
+	  function. You can simply pass NULL there for the
+	  previous behavior, or pass a command which tells the
+	  child process to exit to get benefit of the bugfix. I.e.
+	  if the child is a shell you can pass "exit". Without this
+	  explicit command it's possible for multiple instances
+	  of the coprocess object to hang upon closing. Of course
+	  multiple instances are rare - the whole point of this
+	  module is to replace many processes with one.

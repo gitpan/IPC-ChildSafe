@@ -260,8 +260,6 @@ _cp_start_child(CHILD *handle)
    int down_pipe[2], back_pipe[2], err_pipe[2];
    FILE *downfp, *backfp, *errfp;
 
-   _dbg(F,L,1, "starting child %s ...", handle->cph_cmd);
-
    if (pipe(down_pipe) < 0)
       _cp_syserr("down_pipe");
    if (pipe(back_pipe) < 0)
@@ -272,6 +270,7 @@ _cp_start_child(CHILD *handle)
    if ((pid = fork()) < 0)
       _cp_syserr("fork");
    else if (pid > 0) {
+      _dbg(F,L,1, "starting child %s (pid=%d) ...", handle->cph_cmd, pid);
       (void) close(down_pipe[0]);
       if ((downfp = fdopen(down_pipe[1], "w")) == NULL)
 	 _cp_syserr("fdopen");
@@ -389,11 +388,13 @@ _cp_sync(CHILD *handle)
  * which handles both input to and output from the process. Also returns
  * another file ptr via the parameter list which can be polled for error
  * output.
+ * The last parameter is the command to send to the process
+ * which causes it to finish, typically "exit" or similar.
  ** We defer the actual fork/exec sequence till the first
  ** command is sent.
  */
 CHILD *
-child_open(char *cmd, char *tag, char *eot)
+child_open(char *cmd, char *tag, char *eot, char *quit)
 {
    CHILD *handle;
 
@@ -402,9 +403,11 @@ child_open(char *cmd, char *tag, char *eot)
       exit(1);
    }
    (void) memset(handle, 0, sizeof(CHILD));
-   handle->cph_cmd = _cp_newstr(cmd);
-   handle->cph_tag = _cp_newstr("%s\n", tag);
-   handle->cph_eot = _cp_newstr("%s\n", eot);
+   handle->cph_cmd  = _cp_newstr(cmd);
+   handle->cph_tag  = _cp_newstr("%s\n", tag);
+   handle->cph_eot  = _cp_newstr("%s\n", eot);
+   if (quit && *quit)
+       handle->cph_quit = _cp_newstr("%s\n", quit);
 
    return handle;
 }
@@ -471,7 +474,7 @@ child_puts(char *s, CHILD *handle)
 char *
 child_gets(char *s, int n, CHILD *handle)
 {
-   static char buf[BIGLINE];
+   char buf[BIGLINE];
 
    UPDATE_HANDLE(handle, mru_handle, NULL);
 
@@ -580,7 +583,14 @@ child_close(CHILD *handle)
 
    _dbg(F,L,1, "closing child %s (%d)", handle->cph_cmd, handle->cph_pid);
 
-   /** Close the input pipe to the child;, which should die gracefully. **/
+   /** Optionally, explicitly tell the child to give up the ghost */
+   if (handle->cph_quit && *(handle->cph_quit)) {
+      _dbg(F,L,3, "sending '%s' cmd to pid %d",
+		      handle->cph_quit, handle->cph_pid);
+      (void) fputs(handle->cph_quit, handle->cph_down);
+   }
+
+   /** Close the input pipe to the child, which should die gracefully. **/
    if (fclose(handle->cph_down) == EOF
 	 || fclose(handle->cph_back) == EOF
 	 || fclose(handle->cph_err) == EOF)

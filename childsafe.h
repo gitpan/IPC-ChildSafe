@@ -23,13 +23,14 @@ typedef struct
     FILE *cph_err;
     char *cph_tag;
     char *cph_eot;
+    char *cph_quit;
     pid_t cph_pid;
     unsigned cph_errs;
     unsigned cph_pending;
 } CHILD;
 
 /** Public C interfaces in childsafe.c **/
-extern CHILD *child_open(char *, char *, char *);
+extern CHILD *child_open(char *, char *, char *, char *);
 extern int child_puts(char *, CHILD *);
 extern char *child_gets(char *, int, CHILD *);
 extern int child_end(CHILD *, int);

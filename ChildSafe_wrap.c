@@ -504,16 +504,18 @@ XS(_wrap_child_open) {
     char * _arg0;
     char * _arg1;
     char * _arg2;
+    char * _arg3;
     int argvi = 0;
     dXSARGS ;
 
     cv = cv;
-    if ((items < 3) || (items > 3)) 
-        croak("Usage: child_open(char *,char *,char *);");
+    if ((items < 4) || (items > 4)) 
+        croak("Usage: child_open(char *,char *,char *,char *);");
     _arg0 = (char *) SvPV(ST(0),PL_na);
     _arg1 = (char *) SvPV(ST(1),PL_na);
     _arg2 = (char *) SvPV(ST(2),PL_na);
-    _result = (CHILD *)child_open(_arg0,_arg1,_arg2);
+    _arg3 = (char *) SvPV(ST(3),PL_na);
+    _result = (CHILD *)child_open(_arg0,_arg1,_arg2,_arg3);
     ST(argvi) = sv_newmortal();
     sv_setref_pv(ST(argvi++),"CHILDPtr", (void *) _result);
     XSRETURN(argvi);

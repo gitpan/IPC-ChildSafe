@@ -28,7 +28,7 @@
 /**
  ** The interfaces we make available to IPC::ChildSafe.pm
  **/
-CHILD *child_open(char *, char *, char *); /* Open (start) a child */
+CHILD *child_open(char *, char *, char *, char *); /* Open (start) a child */
 int child_puts(char *, CHILD *); /* Send a command to the child */
 %new char *child_get_stdout_perl(CHILD *); /* Read back a line of output */
 %new char *child_get_stderr_perl(CHILD *); /* Read a line of stderr output */

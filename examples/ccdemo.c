@@ -11,7 +11,7 @@ main(int argc, char *argv[])
    char line[1024];		/* general-purpose char buffer */
 
    /* Open (start) the cleartool */
-   if ((ctcp = child_open("cleartool", "pwd -h", "Usage: pwd")) == NULL)
+   if ((ctcp = child_open("cleartool", "pwd -h", "Usage: pwd", "exit")) == NULL)
       return 1;
    /* Run a cleartool cmd, then get its output and check its exit code. */
    if (child_puts("ls", ctcp) <= 0)
